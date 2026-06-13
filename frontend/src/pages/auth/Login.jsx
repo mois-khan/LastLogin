@@ -1,7 +1,14 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
+import { ShieldCheck, Users, AudioLines, ArrowRight } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Candle from "../../components/ui/Candle.jsx";
+
+const TRUST = [
+  { Icon: ShieldCheck, text: "Encrypted, and released only after a death is verified." },
+  { Icon: Users, text: "No one acts alone — 2 of your 3 guardians must agree." },
+  { Icon: AudioLines, text: "Your final words, delivered in your own voice." },
+];
 
 export default function Login() {
   const { user, login, register } = useAuth();
@@ -9,63 +16,93 @@ export default function Login() {
   const [mode, setMode] = useState("register");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  if (user) { nav("/app/assistant"); return null; }
+  if (user) return <Navigate to="/app/assistant" replace />;
 
   const submit = async (e) => {
     e.preventDefault();
-    setErr("");
+    setErr(""); setBusy(true);
     try {
       if (mode === "register") await register(form.email, form.password, form.name);
       else await login(form.email, form.password);
       nav("/app/assistant");
     } catch (e2) {
-      setErr(e2.response?.data?.error || "Something went wrong");
-    }
+      setErr(e2.response?.data?.error || "Something went wrong. Try again.");
+    } finally { setBusy(false); }
   };
 
   return (
-    <div className="min-h-screen grid md:grid-cols-2">
-      {/* Hero — the thesis: a single candle, kept burning */}
-      <div className="flex flex-col justify-center items-center px-10 py-16 border-b md:border-b-0 md:border-r border-line">
-        <Candle size={88} />
-        <h1 className="mt-8 text-4xl md:text-5xl text-center leading-tight max-w-md">
-          Your digital life, handled — so your family doesn't have to.
-        </h1>
-        <p className="mt-5 text-mist max-w-sm text-center">
-          Prepare your accounts, crypto and final words while you're here.
-          We pass them on only after your death is verified — gently, and in your own voice.
-        </p>
+    <div className="min-h-screen grid lg:grid-cols-2">
+      {/* Hero — the thesis */}
+      <div className="relative flex flex-col justify-center px-8 sm:px-14 py-16 border-b lg:border-b-0 lg:border-r border-line">
+        <div className="max-w-md rise">
+          <Candle size={76} />
+          <h1 className="mt-9 font-display text-hero leading-[1.04]">
+            Your digital life, handed on with care.
+          </h1>
+          <p className="mt-5 text-graphite text-lg leading-relaxed max-w-sm">
+            Prepare your accounts, documents and final words while you're here.
+            They're passed on only after your death is verified — gently, and in your own voice.
+          </p>
+
+          <ul className="mt-10 space-y-4">
+            {TRUST.map(({ Icon, text }) => (
+              <li key={text} className="flex items-start gap-3">
+                <span className="mt-0.5 grid place-items-center h-8 w-8 shrink-0 rounded-lg bg-sage/12 text-sage-600">
+                  <Icon size={17} strokeWidth={2} />
+                </span>
+                <span className="text-sm text-graphite leading-relaxed">{text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {/* Auth */}
-      <div className="flex items-center justify-center px-10 py-16">
-        <form onSubmit={submit} className="card w-full max-w-sm">
-          <div className="flex gap-2 mb-6">
-            <button type="button" onClick={() => setMode("register")}
-              className={`pill ${mode === "register" ? "bg-ink text-paper" : "bg-paper text-mist"}`}>Create account</button>
-            <button type="button" onClick={() => setMode("login")}
-              className={`pill ${mode === "login" ? "bg-ink text-paper" : "bg-paper text-mist"}`}>Sign in</button>
+      <div className="flex items-center justify-center px-8 sm:px-14 py-16">
+        <form onSubmit={submit} className="w-full max-w-sm rise">
+          <h2 className="font-display text-title mb-1">
+            {mode === "register" ? "Begin your estate" : "Welcome back"}
+          </h2>
+          <p className="text-sm text-mist mb-7">
+            {mode === "register" ? "A few minutes now spares your family months later." : "Sign in to continue."}
+          </p>
+
+          <div className="inline-flex p-1 mb-7 rounded-full bg-line/50">
+            {["register", "login"].map((m) => (
+              <button key={m} type="button" onClick={() => setMode(m)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${mode === m ? "bg-card text-ink shadow-card" : "text-graphite hover:text-ink"}`}>
+                {m === "register" ? "Create account" : "Sign in"}
+              </button>
+            ))}
           </div>
+
           {mode === "register" && (
             <div className="mb-4">
               <label className="label">Your name</label>
-              <input className="field" value={form.name}
+              <input className="field" value={form.name} autoComplete="name"
                 onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
           )}
           <div className="mb-4">
             <label className="label">Email</label>
-            <input className="field" type="email" required value={form.email}
+            <input className="field" type="email" required value={form.email} autoComplete="email"
               onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
-          <div className="mb-5">
+          <div className="mb-6">
             <label className="label">Password</label>
             <input className="field" type="password" required value={form.password}
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
               onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </div>
-          {err && <p className="text-sm text-ember mb-3">{err}</p>}
-          <button className="btn-ember w-full">{mode === "register" ? "Begin" : "Sign in"}</button>
+
+          {err && <p className="text-sm text-ember mb-4">{err}</p>}
+
+          <button className="btn-primary w-full" disabled={busy}>
+            {busy ? "One moment…" : (mode === "register" ? "Begin" : "Sign in")}
+            {!busy && <ArrowRight size={16} strokeWidth={2.25} />}
+          </button>
         </form>
       </div>
     </div>
