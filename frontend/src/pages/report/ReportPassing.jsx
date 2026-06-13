@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Upload, ShieldCheck, ShieldAlert, Loader2, Users, FileText, Check, ArrowRight } from "lucide-react";
+import { Upload, ShieldCheck, ShieldAlert, Loader2, Users, FileText, Check, ArrowRight, ArrowLeft } from "lucide-react";
 import { api } from "../../lib/api.js";
 
 // Guardian-facing. Two steps: (1) Gemini Vision verifies a death certificate,
@@ -46,6 +46,7 @@ export default function ReportPassing() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-xl px-6 py-16">
+        <button onClick={() => nav(-1)} className="inline-flex items-center gap-1.5 text-sm text-mist hover:text-ink mb-6"><ArrowLeft size={15} /> Back</button>
         <p className="text-xs uppercase tracking-[0.2em] text-mist">Guardian verification</p>
         <h1 className="mt-3 font-display text-title">Report a passing</h1>
         <p className="mt-4 text-graphite leading-relaxed">
