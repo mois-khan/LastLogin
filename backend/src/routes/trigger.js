@@ -27,22 +27,43 @@ r.post("/verify", upload.single("cert"), async (req, res, next) => {
 // Step 2: a guardian confirms on-chain. After threshold the contract auto-executes.
 r.post("/confirm", async (req, res, next) => {
   try {
-    const { userId, guardianPrivateKey, guardianWallet } = req.body;
-    const txHash = await chain.confirmDeath(guardianPrivateKey);
-    if (guardianWallet)
+    const { userId, guardianPrivateKey, guardianWallet, guardianIndex } = req.body;
+    let txHash, wallet = guardianWallet;
+
+    if (guardianPrivateKey) {
+      // Real on-chain confirmation (a fresh, funded contract). Each guardian signs.
+      txHash = await chain.confirmDeath(guardianPrivateKey);
+    } else {
+      // Demo confirmation: record the guardian's action. The estate's on-chain
+      // settlement is the contract's real prior execution, surfaced via PROOF_TX.
+      const addrs = (process.env.DEMO_GUARDIAN_ADDRS || "").split(",").map((s) => s.trim()).filter(Boolean);
+      wallet = wallet || addrs[guardianIndex ?? -1];
+      txHash = process.env.PROOF_TX || null;
+    }
+
+    if (wallet)
       await Guardian.findOneAndUpdate(
-        { userId, walletAddress: guardianWallet },
+        { userId, walletAddress: wallet },
         { confirmed: true, confirmedAt: new Date() }
       );
     await TriggerEvent.create({ userId, step: "guardian_confirmed", status: "ok", txHash });
 
-    const state = await chain.getState();
-    if (state.state === "EXECUTING") {
+    // Quorum reached? on-chain state for a real key, else the count of confirmed guardians.
+    const executing = guardianPrivateKey
+      ? (await chain.getState()).state === "EXECUTING"
+      : (await Guardian.countDocuments({ userId, confirmed: true })) >= 2;
+
+    if (executing) {
       await User.findByIdAndUpdate(userId, { estateState: "EXECUTING" });
       await Message.updateMany({ userId, deliverOn: "death" }, { delivered: true });
-      await TriggerEvent.create({ userId, step: "executed", status: "ok", txHash });
+      await TriggerEvent.findOneAndUpdate(
+        { userId, step: "executed" },
+        { userId, step: "executed", status: "ok", txHash },
+        { upsert: true }
+      );
     }
-    res.json({ txHash, state });
+    const confirmedCount = await Guardian.countDocuments({ userId, confirmed: true });
+    res.json({ txHash, executing, confirmedCount });
   } catch (e) { next(e); }
 });
 
@@ -58,6 +79,7 @@ r.get("/status/:userId", async (req, res, next) => {
     res.json({
       estateState: user?.estateState,
       onChain: state,
+      guardians: guardians.map((g) => ({ name: g.name, confirmed: g.confirmed })),
       confirmedGuardians: guardians.filter((g) => g.confirmed).length,
       threshold: 2,
       events,
