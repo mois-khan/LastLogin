@@ -7,6 +7,7 @@ import Vault from "./pages/vault/Vault.jsx";
 import Guardians from "./pages/guardians/Guardians.jsx";
 import Messages from "./pages/messages/Messages.jsx";
 import FamilyDashboard from "./pages/family-dashboard/FamilyDashboard.jsx";
+import ReportPassing from "./pages/report/ReportPassing.jsx";
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/family/:userId" element={<FamilyDashboard />} />
+      <Route path="/report/:userId" element={<ReportPassing />} />
       <Route path="/app" element={<Protected><Shell /></Protected>}>
         <Route index element={<Navigate to="assistant" replace />} />
         <Route path="assistant" element={<WillAssistant />} />
