@@ -80,7 +80,7 @@ export default function FamilyDashboard() {
           </section>
         )}
 
-        <p className="mt-16 text-center text-xs text-mist">Held in trust by LastLogin.</p>
+        <a href="/" className="mt-16 block text-center text-xs text-mist hover:text-ink transition-colors">Held in trust by LastLogin.</a>
       </div>
     </div>
   );
