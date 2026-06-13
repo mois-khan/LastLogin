@@ -26,7 +26,9 @@ export async function cloneVoice(audioFilePath, name = "LastLogin voice") {
 export async function speak(voiceId, text, modelId = "eleven_multilingual_v2") {
   const { data } = await axios.post(
     `${BASE}/text-to-speech/${voiceId}`,
-    { text, model_id: modelId, voice_settings: { stability: 0.5, similarity_boost: 0.8 } },
+    // Lower stability + some style = more emotional range and expression in the
+    // cloned voice (warmer, less monotone) while staying recognisably them.
+    { text, model_id: modelId, voice_settings: { stability: 0.4, similarity_boost: 0.85, style: 0.35, use_speaker_boost: true } },
     { headers: { "xi-api-key": key(), "Content-Type": "application/json", Accept: "audio/mpeg" },
       responseType: "arraybuffer" }
   );

@@ -17,6 +17,7 @@ export default function Login() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   if (user) return <Navigate to="/app/assistant" replace />;
 
@@ -97,9 +98,18 @@ export default function Login() {
               onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </div>
 
+          {mode === "register" && (
+            <label className="flex items-start gap-3 mb-5 p-3 rounded-xl bg-paper border border-line cursor-pointer">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 accent-ember" />
+              <span className="text-xs text-graphite leading-relaxed">
+                I understand that <span className="text-ink">nothing activates while I'm alive</span>, that I'm opting in freely, and that releasing my estate requires <span className="text-ink">2 of my 3 guardians</span> and a verified certificate.
+              </span>
+            </label>
+          )}
+
           {err && <p className="text-sm text-ember mb-4">{err}</p>}
 
-          <button className="btn-primary w-full" disabled={busy}>
+          <button className="btn-primary w-full" disabled={busy || (mode === "register" && !agreed)}>
             {busy ? "One moment…" : (mode === "register" ? "Begin" : "Sign in")}
             {!busy && <ArrowRight size={16} strokeWidth={2.25} />}
           </button>

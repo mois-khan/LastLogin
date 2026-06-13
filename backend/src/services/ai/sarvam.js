@@ -17,7 +17,9 @@ function headers() {
 export async function translate(text, targetLang = "hi-IN", sourceLang = "en-IN") {
   const { data } = await axios.post(
     `${BASE}/translate`,
-    { input: text, source_language_code: sourceLang, target_language_code: targetLang, mode: "formal" },
+    // "modern-colloquial" = natural spoken Hindi/Telugu with English mixed in where it
+    // sounds real (Hinglish when needed) — warmer than stiff formal translation.
+    { input: text, source_language_code: sourceLang, target_language_code: targetLang, mode: "modern-colloquial" },
     { headers: headers() }
   );
   return data.translated_text;
