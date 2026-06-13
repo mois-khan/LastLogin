@@ -1,6 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import fs from "fs";
+import os from "os";
+import path from "path";
 import { auth } from "../middleware/auth.js";
 import User from "../models/User.js";
 import Message from "../models/Message.js";
@@ -8,7 +10,10 @@ import * as gemini from "../services/ai/gemini.js";
 import * as eleven from "../services/ai/elevenlabs.js";
 import { generateLegacyMessage } from "../services/ai/legacyMessage.js";
 
-const upload = multer({ dest: "/tmp/uploads/" });
+// Cross-platform temp dir (the old "/tmp/uploads" doesn't exist on Windows → upload 500s).
+const UPLOAD_DIR = path.join(os.tmpdir(), "lastlogin-uploads");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const upload = multer({ dest: UPLOAD_DIR });
 const r = Router();
 
 // Will assistant chat (Gemini)
@@ -49,6 +54,12 @@ r.post("/messages", auth, async (req, res, next) => {
     });
     res.json({ id: msg._id, translatedText, audioUrl, language: targetLang });
   } catch (e) { next(e); }
+});
+
+// List the user's saved messages (so they persist across navigation).
+r.get("/messages", auth, async (req, res, next) => {
+  try { res.json(await Message.find({ userId: req.user.id }).sort({ createdAt: -1 })); }
+  catch (e) { next(e); }
 });
 
 // Verify an uploaded death certificate (Gemini Vision)

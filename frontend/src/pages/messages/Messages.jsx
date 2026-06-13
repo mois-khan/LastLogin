@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -12,7 +12,7 @@ const LANGS = [
 ];
 
 export default function Messages() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [voiceId, setVoiceId] = useState(user?.voiceId || "");
   const [recording, setRecording] = useState(false);
   const [cloning, setCloning] = useState(false);
@@ -20,8 +20,12 @@ export default function Messages() {
   const [status, setStatus] = useState(null); // { tone: 'ok'|'err'|'busy', text }
   const [form, setForm] = useState({ recipientName: "", recipientEmail: "", text: "", language: "hi-IN" });
   const [result, setResult] = useState(null);
+  const [saved, setSaved] = useState([]);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
+
+  const loadSaved = async () => setSaved((await api.get("/ai/messages")).data);
+  useEffect(() => { loadSaved().catch(() => {}); }, []);
 
   const startRec = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -41,7 +45,7 @@ export default function Messages() {
     fd.append("sample", blob, "sample.webm");
     try {
       const { data } = await api.post("/ai/voice/clone", fd);
-      setVoiceId(data.voiceId); setStatus({ tone: "ok", text: "Voice ready." });
+      setVoiceId(data.voiceId); updateUser({ voiceId: data.voiceId }); setStatus({ tone: "ok", text: "Voice ready." });
     } catch { setStatus({ tone: "err", text: "Voice cloning failed — check your ElevenLabs plan." }); }
     finally { setCloning(false); }
   };
@@ -51,7 +55,7 @@ export default function Messages() {
     setGenerating(true); setStatus({ tone: "busy", text: "Composing in your voice…" }); setResult(null);
     try {
       const { data } = await api.post("/ai/messages", form);
-      setResult(data); setStatus(null);
+      setResult(data); setStatus(null); loadSaved();
     } catch (e) { setStatus({ tone: "err", text: e.response?.data?.error || "Generation failed." }); }
     finally { setGenerating(false); }
   };
@@ -120,6 +124,29 @@ export default function Messages() {
           <p className="text-graphite leading-relaxed mb-4">{result.translatedText}</p>
           <audio controls src={result.audioUrl} className="w-full" />
           <a href={result.audioUrl} download="lastlogin-message.mp3" className="btn-secondary btn-sm mt-3"><Download size={14} /> Download</a>
+        </div>
+      )}
+
+      {saved.length > 0 && (
+        <div className="mt-10 max-w-2xl">
+          <h3 className="text-h mb-3">Your saved messages</h3>
+          <div className="space-y-3">
+            {saved.map((m) => (
+              <div key={m._id} className="card">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{m.recipientName || "Message"}{m.recipientEmail && <span className="text-mist font-normal"> · {m.recipientEmail}</span>}</span>
+                  <span className="pill bg-paper text-mist border border-line">{m.language}</span>
+                </div>
+                <p className="text-sm text-graphite leading-relaxed mb-3">{m.text}</p>
+                {m.audioUrl && (
+                  <>
+                    <audio controls src={m.audioUrl} className="w-full" />
+                    <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 mt-2 text-xs text-ember hover:underline"><Download size={13} /> Download</a>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
