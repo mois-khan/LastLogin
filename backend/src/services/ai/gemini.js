@@ -1,7 +1,10 @@
 import axios from "axios";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODEL = "gemini-2.0-flash"; // fast + free-tier friendly; swap to latest flash if needed
+// Try models in order; on quota (429) or a transient 5xx, fall back to the next.
+// Lite first = more free quota. Override the list with GEMINI_MODELS in .env.
+const MODELS = (process.env.GEMINI_MODELS || "gemini-3.1-flash-lite,gemini-3.5-flash,gemini-2.5-flash")
+  .split(",").map((m) => m.trim()).filter(Boolean);
 
 function key() {
   const k = process.env.GEMINI_API_KEY;
@@ -15,10 +18,21 @@ async function generate(parts, { json = false, system } = {}) {
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
     generationConfig: json ? { responseMimeType: "application/json" } : {},
   };
-  const { data } = await axios.post(`${BASE}/${MODEL}:generateContent?key=${key()}`, body, {
-    headers: { "Content-Type": "application/json" },
-  });
-  return data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
+  let lastErr;
+  for (const model of MODELS) {
+    try {
+      const { data } = await axios.post(`${BASE}/${model}:generateContent?key=${key()}`, body, {
+        headers: { "Content-Type": "application/json" },
+      });
+      return data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
+    } catch (e) {
+      const status = e.response?.status;
+      lastErr = e;
+      if (status === 429 || (status >= 500 && status < 600)) continue; // quota/transient → next model
+      throw e;
+    }
+  }
+  throw lastErr;
 }
 
 const WILL_SYSTEM = `You are the LastLogin guide: a warm, calm companion helping someone
