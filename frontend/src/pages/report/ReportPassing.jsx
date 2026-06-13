@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Upload, ShieldCheck, ShieldAlert, Loader2, Users, FileText, Check, ArrowRight, ArrowLeft } from "lucide-react";
+import { Upload, ShieldCheck, ShieldAlert, Loader2, Users, FileText, Check, ArrowRight, ArrowLeft, Mail } from "lucide-react";
 import { api } from "../../lib/api.js";
 
 // Guardian-facing. Two steps: (1) Gemini Vision verifies a death certificate,
@@ -15,7 +15,11 @@ export default function ReportPassing() {
   const [err, setErr] = useState("");
 
   const [status, setStatus] = useState(null); // { guardians, confirmedGuardians, estateState }
-  const [confirming, setConfirming] = useState(null); // index being confirmed
+  const [otpFor, setOtpFor] = useState(null); // guardian index entering a code
+  const [otpInfo, setOtpInfo] = useState(null); // { to, demoCode }
+  const [codeInput, setCodeInput] = useState("");
+  const [otpErr, setOtpErr] = useState("");
+  const [busyG, setBusyG] = useState(null); // guardian index with an in-flight request
 
   const loadStatus = async () => setStatus((await api.get(`/trigger/status/${userId}`)).data);
   useEffect(() => { loadStatus().catch(() => {}); }, [userId]);
@@ -32,12 +36,22 @@ export default function ReportPassing() {
     } finally { setVerifying(false); }
   };
 
-  const confirm = async (i) => {
-    setConfirming(i);
+  const requestOtp = async (i) => {
+    setBusyG(i); setOtpErr(""); setCodeInput("");
     try {
-      await api.post("/trigger/confirm", { userId, guardianIndex: i });
+      const { data } = await api.post("/trigger/otp", { userId, guardianIndex: i });
+      setOtpFor(i); setOtpInfo(data);
+    } finally { setBusyG(null); }
+  };
+  const verifyConfirm = async (i) => {
+    setBusyG(i); setOtpErr("");
+    try {
+      await api.post("/trigger/confirm", { userId, guardianIndex: i, code: codeInput.trim() });
+      setOtpFor(null); setOtpInfo(null); setCodeInput("");
       await loadStatus();
-    } finally { setConfirming(null); }
+    } catch (e) {
+      setOtpErr(e.response?.data?.error || "Couldn't verify. Try again.");
+    } finally { setBusyG(null); }
   };
 
   const executing = status?.estateState === "EXECUTING" || (status?.confirmedGuardians ?? 0) >= 2;
@@ -114,17 +128,35 @@ export default function ReportPassing() {
               <span className="text-sm text-mist">{status?.confirmedGuardians ?? 0} of 2</span>
             </div>
 
-            <ul className="mt-5 space-y-2">
+            <ul className="mt-5 space-y-1">
               {(status?.guardians ?? []).map((g, i) => (
-                <li key={i} className="flex items-center gap-3 py-2">
-                  <span className="grid place-items-center h-8 w-8 rounded-full bg-paper border border-line text-xs text-mist">{g.name?.[0] || "?"}</span>
-                  <span className="flex-1 text-sm">{g.name}</span>
-                  {g.confirmed ? (
-                    <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Confirmed</span>
-                  ) : (
-                    <button className="btn-secondary btn-sm" disabled={confirming === i} onClick={() => confirm(i)}>
-                      {confirming === i ? <Loader2 size={14} className="animate-spin" /> : "Confirm"}
-                    </button>
+                <li key={i} className="py-2 border-b border-line last:border-0">
+                  <div className="flex items-center gap-3">
+                    <span className="grid place-items-center h-8 w-8 rounded-full bg-paper border border-line text-xs text-mist">{g.name?.[0] || "?"}</span>
+                    <span className="flex-1 text-sm">{g.name}</span>
+                    {g.confirmed ? (
+                      <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Confirmed</span>
+                    ) : otpFor === i ? (
+                      <span className="text-xs text-mist">Enter code →</span>
+                    ) : (
+                      <button className="btn-secondary btn-sm" disabled={busyG === i} onClick={() => requestOtp(i)}>
+                        {busyG === i ? <Loader2 size={14} className="animate-spin" /> : "Confirm"}
+                      </button>
+                    )}
+                  </div>
+                  {otpFor === i && !g.confirmed && (
+                    <div className="mt-3 ml-11 p-3 rounded-xl bg-paper border border-line rise">
+                      <p className="text-xs text-mist flex items-center gap-1.5 mb-2"><Mail size={13} /> Code sent to {otpInfo?.to}</p>
+                      {otpInfo?.demoCode && <p className="text-xs text-mist mb-2">Demo code: <span className="mono text-ink">{otpInfo.demoCode}</span></p>}
+                      <div className="flex gap-2">
+                        <input className="field !py-1.5 mono tracking-[0.3em]" placeholder="000000" maxLength={6} value={codeInput}
+                          onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, ""))} />
+                        <button className="btn-primary btn-sm shrink-0" disabled={busyG === i || codeInput.length < 6} onClick={() => verifyConfirm(i)}>
+                          {busyG === i ? <Loader2 size={14} className="animate-spin" /> : "Verify & confirm"}
+                        </button>
+                      </div>
+                      {otpErr && <p className="text-xs text-ember mt-2">{otpErr}</p>}
+                    </div>
                   )}
                 </li>
               ))}

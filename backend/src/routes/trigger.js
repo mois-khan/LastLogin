@@ -1,7 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
 import fs from "fs";
+import crypto from "crypto";
 import { auth } from "../middleware/auth.js";
+import { sendEmail } from "../services/notify/email.js";
 import User from "../models/User.js";
 import Guardian from "../models/Guardian.js";
 import Message from "../models/Message.js";
@@ -24,27 +26,55 @@ r.post("/verify", upload.single("cert"), async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Step 2: a guardian confirms on-chain. After threshold the contract auto-executes.
+// Step 1.5: email a single-use OTP to a guardian so they verify before confirming.
+r.post("/otp", async (req, res, next) => {
+  try {
+    const { userId, guardianIndex } = req.body;
+    const guardians = await Guardian.find({ userId }).sort({ createdAt: 1 });
+    const g = guardians[guardianIndex ?? -1];
+    if (!g) return res.status(404).json({ error: "guardian not found" });
+    const code = String(crypto.randomInt(100000, 1000000));
+    g.otpCode = code;
+    g.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await g.save();
+    let sent = false, sendError = null;
+    try {
+      const r2 = await sendEmail({
+        to: g.email,
+        subject: "Your LastLogin verification code",
+        text: `Your verification code is ${code}.\n\nIt confirms a serious, irreversible action. Only continue if you are certain.`,
+      });
+      sent = !r2?.mocked;
+    } catch (e) { sendError = e.response?.data?.message || e.message; }
+    // demoCode lets the flow work on Resend's free tier (own-inbox-only). Remove in production.
+    res.json({ to: g.email, sent, sendError, demoCode: code });
+  } catch (e) { next(e); }
+});
+
+// Step 2: a guardian confirms (OTP-verified). After the 2-of-3 quorum the estate executes.
 r.post("/confirm", async (req, res, next) => {
   try {
-    const { userId, guardianPrivateKey, guardianWallet, guardianIndex } = req.body;
+    const { userId, guardianPrivateKey, guardianWallet, guardianIndex, code } = req.body;
     let txHash, wallet = guardianWallet;
 
     if (guardianPrivateKey) {
       // Real on-chain confirmation (a fresh, funded contract). Each guardian signs.
       txHash = await chain.confirmDeath(guardianPrivateKey);
     } else {
-      // Demo confirmation: record the guardian's action. The estate's on-chain
-      // settlement is the contract's real prior execution, surfaced via PROOF_TX.
-      const addrs = (process.env.DEMO_GUARDIAN_ADDRS || "").split(",").map((s) => s.trim()).filter(Boolean);
-      wallet = wallet || addrs[guardianIndex ?? -1];
+      // Demo path: verify the guardian's emailed OTP before accepting the confirmation.
+      const guardians = await Guardian.find({ userId }).sort({ createdAt: 1 });
+      const g = guardians[guardianIndex ?? -1];
+      if (!g) return res.status(400).json({ error: "guardian not found" });
+      if (!g.otpCode || g.otpCode !== code || (g.otpExpires && g.otpExpires < new Date()))
+        return res.status(401).json({ error: "Invalid or expired verification code." });
+      wallet = g.walletAddress;
       txHash = process.env.PROOF_TX || null;
     }
 
     if (wallet)
       await Guardian.findOneAndUpdate(
         { userId, walletAddress: wallet },
-        { confirmed: true, confirmedAt: new Date() }
+        { confirmed: true, confirmedAt: new Date(), otpCode: null, otpExpires: null }
       );
     await TriggerEvent.create({ userId, step: "guardian_confirmed", status: "ok", txHash });
 

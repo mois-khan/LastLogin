@@ -8,6 +8,8 @@ const guardianSchema = new mongoose.Schema(
     walletAddress: String, // confirms on-chain
     confirmed: { type: Boolean, default: false },
     confirmedAt: Date,
+    otpCode: String, // emailed verification code (single-use)
+    otpExpires: Date,
   },
   { timestamps: true }
 );
