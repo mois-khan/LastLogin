@@ -8,6 +8,8 @@ import { auth } from "../middleware/auth.js";
 import { sendEmail } from "../services/notify/email.js";
 import User from "../models/User.js";
 import Guardian from "../models/Guardian.js";
+import VaultItem from "../models/VaultItem.js";
+import { decrypt } from "../services/crypto/vault.js";
 import Message from "../models/Message.js";
 import TriggerEvent from "../models/TriggerEvent.js";
 import * as gemini from "../services/ai/gemini.js";
@@ -18,6 +20,7 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const upload = multer({ dest: UPLOAD_DIR });
 const r = Router();
 const recipientOtps = new Map(); // `${userId}:${email}` -> { code, expires }
+const guardianOtps = new Map(); // guardian portal access codes
 
 // Step 1: a guardian uploads a death certificate -> Gemini Vision gate
 r.post("/verify", upload.single("cert"), async (req, res, next) => {
@@ -181,6 +184,47 @@ r.post("/inbox", async (req, res, next) => {
     const user = await User.findById(userId);
     const messages = await Message.find({ userId, delivered: true, recipientEmail: email });
     res.json({ from: user?.name, messages });
+  } catch (e) { next(e); }
+});
+
+// --- Guardian portal: a guardian verifies their email (OTP) to access what the owner permitted (RBAC) ---
+r.post("/guardian-otp", async (req, res, next) => {
+  try {
+    const { userId, email } = req.body;
+    if (!email) return res.status(400).json({ error: "Enter your email." });
+    const g = await Guardian.findOne({ userId, email });
+    if (!g) return res.status(404).json({ error: "You're not listed as a guardian for this person." });
+    const code = String(crypto.randomInt(100000, 1000000));
+    guardianOtps.set(`${userId}:${email.toLowerCase()}`, { code, expires: Date.now() + 10 * 60 * 1000 });
+    let sent = false;
+    try { const r2 = await sendEmail({ to: email, subject: "Your guardian access code", text: `Your code to access this estate: ${code}` }); sent = !r2?.mocked; } catch {}
+    res.json({ name: g.name, sent, demoCode: sent ? undefined : code });
+  } catch (e) { next(e); }
+});
+
+r.post("/guardian-access", async (req, res, next) => {
+  try {
+    const { userId, email, code } = req.body;
+    const rec = guardianOtps.get(`${userId}:${(email || "").toLowerCase()}`);
+    if (!rec || rec.code !== code || rec.expires < Date.now()) return res.status(401).json({ error: "Invalid or expired code." });
+    guardianOtps.delete(`${userId}:${email.toLowerCase()}`); // single-use
+    const g = await Guardian.findOne({ userId, email });
+    const user = await User.findById(userId).select("name estateState");
+    let items = [];
+    if (user?.estateState === "EXECUTING" && g.access?.length) {
+      const found = await VaultItem.find({ userId, type: { $in: g.access } });
+      items = found.map((i) => {
+        if (i.scheme === "server") {
+          try {
+            const raw = decrypt(i.blob);
+            let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
+            return { type: i.type, label: i.label, fields };
+          } catch { return { type: i.type, label: i.label, locked: true }; }
+        }
+        return { type: i.type, label: i.label, locked: true }; // zero-knowledge — opens with the guardian quorum (Shamir)
+      });
+    }
+    res.json({ name: g.name, access: g.access, estateState: user?.estateState, items });
   } catch (e) { next(e); }
 });
 
