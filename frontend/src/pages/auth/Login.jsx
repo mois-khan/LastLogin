@@ -61,7 +61,7 @@ export default function Login() {
       </div>
 
       {/* Auth */}
-      <div className="flex items-center justify-center px-8 sm:px-14 py-16">
+      <div className="flex flex-col items-center justify-center px-8 sm:px-14 py-16">
         <form onSubmit={submit} className="w-full max-w-sm rise">
           <h2 className="font-display text-title mb-1">
             {mode === "register" ? "Begin your estate" : "Welcome back"}
@@ -114,6 +114,10 @@ export default function Login() {
             {!busy && <ArrowRight size={16} strokeWidth={2.25} />}
           </button>
         </form>
+        <p className="mt-8 text-sm text-mist text-center">
+          Here as a guardian?{" "}
+          <a href="/access" className="text-ember hover:underline font-medium">Open what was left for you →</a>
+        </p>
       </div>
     </div>
   );

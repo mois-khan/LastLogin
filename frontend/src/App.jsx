@@ -11,6 +11,7 @@ import ReportPassing from "./pages/report/ReportPassing.jsx";
 import Executor from "./pages/executor/Executor.jsx";
 import Inbox from "./pages/inbox/Inbox.jsx";
 import GuardianPortal from "./pages/guardian-portal/GuardianPortal.jsx";
+import GuardianAccess from "./pages/guardian-access/GuardianAccess.jsx";
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -24,6 +25,8 @@ export default function App() {
       <Route path="/family/:userId" element={<FamilyDashboard />} />
       <Route path="/report/:userId" element={<ReportPassing />} />
       <Route path="/inbox/:userId" element={<Inbox />} />
+      <Route path="/access" element={<GuardianAccess />} />
+      <Route path="/g" element={<GuardianAccess />} />
       <Route path="/guardian/:userId" element={<GuardianPortal />} />
       <Route path="/app" element={<Protected><Shell /></Protected>}>
         <Route index element={<Navigate to="assistant" replace />} />

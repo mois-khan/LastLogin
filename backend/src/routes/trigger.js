@@ -31,6 +31,30 @@ async function takeOtp(key, code) {
   await Otp.deleteOne({ key });
   return true;
 }
+const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Exactly what one guardian is owed for one estate: their granted + transfer-flagged assets
+// (decrypted), granted + transfer-flagged files, and the delivered messages. Deletion items
+// are excluded at the query level — they can never reach a guardian.
+async function guardianGrants(g, user) {
+  if (user?.estateState !== "EXECUTING") return { items: [], files: [], messages: [] };
+  const found = await VaultItem.find({ _id: { $in: g.assetAccess || [] }, userId: g.userId, disposition: "transfer" });
+  const items = found.map((i) => {
+    if (i.scheme === "server") {
+      try {
+        const raw = decrypt(i.blob);
+        let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
+        return { type: i.type, label: i.label, platform: i.platform, fields };
+      } catch { return { type: i.type, label: i.label, platform: i.platform, locked: true }; }
+    }
+    return { type: i.type, label: i.label, platform: i.platform, locked: true };
+  });
+  const gf = await Attachment.find({ _id: { $in: g.fileAccess || [] }, userId: g.userId, disposition: "transfer" });
+  const files = gf.map((f) => ({ id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, dataUrl: f.dataUrl }));
+  const messages = (await Message.find({ userId: g.userId, delivered: true })).map((m) =>
+    ({ id: m._id, recipientName: m.recipientName, text: m.text, audioUrl: m.audioUrl, language: m.language }));
+  return { items, files, messages };
+}
 
 // Step 1: a guardian uploads a death certificate -> Gemini Vision gate
 r.post("/verify", upload.single("cert"), async (req, res, next) => {
@@ -221,27 +245,38 @@ r.post("/guardian-access", async (req, res, next) => {
     const g = await Guardian.findOne({ userId, email });
     if (!g) return res.status(404).json({ error: "You're not listed as a guardian for this person." });
     const user = await User.findById(userId).select("name estateState");
-    let items = [], files = [], messages = [];
-    if (user?.estateState === "EXECUTING") {
-      // STRICT isolation: only assets THIS guardian was granted AND flagged "transfer".
-      // A "delete" asset can never appear here — it's excluded at the query level.
-      const found = await VaultItem.find({ _id: { $in: g.assetAccess || [] }, userId, disposition: "transfer" });
-      items = found.map((i) => {
-        if (i.scheme === "server") {
-          try {
-            const raw = decrypt(i.blob);
-            let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
-            return { type: i.type, label: i.label, platform: i.platform, fields };
-          } catch { return { type: i.type, label: i.label, platform: i.platform, locked: true }; }
-        }
-        return { type: i.type, label: i.label, platform: i.platform, locked: true }; // legacy client-encrypted
-      });
-      const gf = await Attachment.find({ _id: { $in: g.fileAccess || [] }, userId, disposition: "transfer" });
-      files = gf.map((f) => ({ id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, dataUrl: f.dataUrl }));
-      messages = (await Message.find({ userId, delivered: true })).map((m) =>
-        ({ id: m._id, recipientName: m.recipientName, text: m.text, audioUrl: m.audioUrl, language: m.language }));
+    res.json({ name: g.name, estateState: user?.estateState, ...(await guardianGrants(g, user)) });
+  } catch (e) { next(e); }
+});
+
+// --- Universal guardian entry: a guardian identifies by their OWN email (no userId in the URL). ---
+// Re-verified with a fresh one-time code on every visit.
+r.post("/guardian-start", async (req, res, next) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Enter a valid email." });
+    const guardians = await Guardian.find({ email: new RegExp(`^${escRe(email)}$`, "i") });
+    if (!guardians.length) return res.status(404).json({ error: "We couldn't find you listed as a guardian for anyone." });
+    const code = String(crypto.randomInt(100000, 1000000));
+    await setOtp(`gae:${email}`, code);
+    let sent = false;
+    try { const r2 = await sendEmail({ to: email, subject: "Your LastLogin access code", text: `Your one-time code to open what was left in your care: ${code}` }); sent = !r2?.mocked; } catch {}
+    res.json({ sent, demoCode: sent ? undefined : code });
+  } catch (e) { next(e); }
+});
+
+r.post("/guardian-portal", async (req, res, next) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!(await takeOtp(`gae:${email}`, String(req.body.code || "").trim()))) return res.status(401).json({ error: "Invalid or expired code." });
+    const guardians = await Guardian.find({ email: new RegExp(`^${escRe(email)}$`, "i") });
+    const estates = [];
+    for (const g of guardians) {
+      const user = await User.findById(g.userId).select("name estateState");
+      if (!user) continue;
+      estates.push({ userId: g.userId, ownerName: user.name, estateState: user.estateState, guardianName: g.name, ...(await guardianGrants(g, user)) });
     }
-    res.json({ name: g.name, estateState: user?.estateState, items, files, messages });
+    res.json({ email, estates });
   } catch (e) { next(e); }
 });
 
