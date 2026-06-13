@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download, Upload, Paperclip, Trash2, Send, Ban, Image as ImageIcon } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -26,6 +26,26 @@ export default function Messages() {
 
   const loadSaved = async () => setSaved((await api.get("/ai/messages")).data);
   useEffect(() => { loadSaved().catch(() => {}); }, []);
+
+  // File / media vault
+  const [files, setFiles] = useState([]);
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const loadFiles = async () => setFiles((await api.get("/attachments")).data);
+  useEffect(() => { loadFiles().catch(() => {}); }, []);
+  const uploadFile = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData(); fd.append("file", file);
+    try { await api.post("/attachments", fd); await loadFiles(); } finally { setUploading(false); }
+  };
+  const flipFile = async (f) => {
+    const disposition = f.disposition === "delete" ? "transfer" : "delete";
+    setFiles((arr) => arr.map((x) => (x.id === f.id ? { ...x, disposition } : x)));
+    await api.patch(`/attachments/${f.id}/disposition`, { disposition });
+  };
+  const removeFile = async (id) => { setFiles((a) => a.filter((x) => x.id !== id)); await api.delete(`/attachments/${id}`); };
+  const fmtSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1e3)) + " KB");
 
   const startRec = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -149,6 +169,50 @@ export default function Messages() {
           </div>
         </div>
       )}
+
+      {/* File / media vault */}
+      <div className="mt-10 max-w-2xl">
+        <h3 className="text-h mb-1 flex items-center gap-2"><Paperclip size={18} className="text-ember" /> File vault</h3>
+        <p className="text-sm text-mist mb-4">Photos and files to leave behind — released only to the guardians you grant them to.</p>
+        <input ref={fileRef} type="file" className="hidden" onChange={(e) => uploadFile(e.target.files?.[0])} />
+        <button onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="w-full card card-hover border-dashed flex flex-col items-center justify-center py-8 text-center">
+          {uploading ? (
+            <><Loader2 size={22} className="text-ember animate-spin" /><span className="mt-2 text-sm text-graphite">Uploading…</span></>
+          ) : (
+            <>
+              <span className="grid place-items-center h-11 w-11 rounded-xl bg-ember/12 text-ember"><Upload size={20} /></span>
+              <span className="mt-2 text-sm font-medium">Upload a file or photo</span>
+              <span className="mt-0.5 text-xs text-mist">From your computer or phone — images, PDFs, documents</span>
+            </>
+          )}
+        </button>
+
+        {files.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {files.map((f) => {
+              const del = f.disposition === "delete";
+              const isImg = (f.mimeType || "").startsWith("image/");
+              return (
+                <li key={f.id} className="card flex items-center gap-3 !py-3">
+                  <span className={`grid place-items-center h-9 w-9 rounded-xl shrink-0 ${del ? "bg-mist/10 text-mist" : "bg-sage/12 text-sage-600"}`}>
+                    {isImg ? <ImageIcon size={16} /> : <Paperclip size={16} />}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm truncate">{f.name}</span>
+                    <span className="block text-xs text-mist">{fmtSize(f.size || 0)}</span>
+                  </span>
+                  <button onClick={() => flipFile(f)}
+                    className={`pill border ${del ? "bg-mist/10 text-mist border-line" : "bg-sage/12 text-sage-600 border-transparent"}`}>
+                    {del ? <><Ban size={12} /> Deletion request</> : <><Send size={12} /> Visible / Transfer</>}
+                  </button>
+                  <button className="text-mist hover:text-ember p-1.5 rounded-lg hover:bg-line/40 transition" title="Remove" onClick={() => removeFile(f.id)}><Trash2 size={15} /></button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { UserPlus, ShieldCheck, Check, KeyRound } from "lucide-react";
+import {
+  UserPlus, ShieldCheck, Check, KeyRound, Phone, Wallet, SlidersHorizontal,
+  ChevronDown, Send, Ban, FileText, Loader2,
+} from "lucide-react";
 import { api } from "../../lib/api.js";
-
-const CATEGORIES = ["account", "bank", "crypto", "insurance", "loan", "document", "subscription"];
 
 export default function Guardians() {
   const [state, setState] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", walletAddress: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", walletAddress: "" });
   const [saving, setSaving] = useState(false);
   const [sq, setSq] = useState({ question: "", answer: "" });
   const [sqSaved, setSqSaved] = useState(false);
+  const [openId, setOpenId] = useState(null);
+  const [config, setConfig] = useState(null); // { assets, files } for openId
+  const [loadingCfg, setLoadingCfg] = useState(false);
 
   const load = async () => setState((await api.get("/guardians")).data);
   useEffect(() => {
@@ -20,20 +24,37 @@ export default function Guardians() {
   const add = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    try { await api.post("/guardians", form); setForm({ name: "", email: "", walletAddress: "" }); await load(); }
+    try { await api.post("/guardians", form); setForm({ name: "", email: "", phone: "", walletAddress: "" }); await load(); }
     finally { setSaving(false); }
-  };
-
-  const toggleAccess = async (g, cat) => {
-    const has = (g.access || []).includes(cat);
-    const access = has ? g.access.filter((c) => c !== cat) : [...(g.access || []), cat];
-    setState((s) => ({ ...s, guardians: s.guardians.map((x) => (x._id === g._id ? { ...x, access } : x)) })); // optimistic
-    await api.post(`/guardians/${g._id}/access`, { access });
   };
 
   const saveSq = async () => {
     await api.post("/guardians/security", { question: sq.question, answer: sq.answer });
     setSq((s) => ({ ...s, answer: "" })); setSqSaved(true); setTimeout(() => setSqSaved(false), 2500);
+  };
+
+  const openConfig = async (g) => {
+    if (openId === g._id) { setOpenId(null); setConfig(null); return; }
+    setOpenId(g._id); setConfig(null); setLoadingCfg(true);
+    try { setConfig((await api.get(`/guardians/${g._id}/config`)).data); }
+    finally { setLoadingCfg(false); }
+  };
+
+  // Per-guardian grant — flip one asset/file and persist this guardian's full grant list.
+  const toggleAsset = async (assetId) => {
+    const assets = config.assets.map((a) => (a.id === assetId ? { ...a, granted: !a.granted } : a));
+    setConfig((c) => ({ ...c, assets }));
+    await api.post(`/guardians/${openId}/access`, { assetAccess: assets.filter((a) => a.granted).map((a) => a.id) });
+  };
+  const toggleFile = async (fileId) => {
+    const files = config.files.map((f) => (f.id === fileId ? { ...f, granted: !f.granted } : f));
+    setConfig((c) => ({ ...c, files }));
+    await api.post(`/guardians/${openId}/access`, { fileAccess: files.filter((f) => f.granted).map((f) => f.id) });
+  };
+  // Lifecycle rule is global to the asset. Flagging "delete" hides it from every guardian.
+  const setAssetDisposition = async (assetId, disposition) => {
+    await api.patch(`/vault/${assetId}/disposition`, { disposition });
+    setConfig((await api.get(`/guardians/${openId}/config`)).data); // reload (delete items drop out)
   };
 
   const guardians = state?.guardians ?? [];
@@ -43,7 +64,7 @@ export default function Guardians() {
   return (
     <div className="rise">
       <h1 className="font-display text-title mb-1">Trusted guardians</h1>
-      <p className="text-mist mb-8 max-w-xl">Choose 3 people. Any 2 together can confirm your passing — and each one only sees what you allow.</p>
+      <p className="text-mist mb-8 max-w-xl">Choose people you trust. Any 2 together can confirm your passing — and each one sees only the assets you grant them.</p>
 
       <div className="card max-w-xl mb-6 flex items-center gap-3">
         <span className="grid place-items-center h-9 w-9 rounded-xl bg-sage/12 text-sage-600 shrink-0"><ShieldCheck size={18} /></span>
@@ -69,18 +90,22 @@ export default function Guardians() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
+        {/* Add */}
         <div className="card lg:col-span-1 self-start">
           <h3 className="text-h mb-4 flex items-center gap-2"><UserPlus size={18} className="text-ember" /> Add a guardian</h3>
           <label className="label">Name</label>
           <input className="field mb-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <label className="label">Email</label>
-          <input className="field mb-3" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <label className="label">Wallet address</label>
+          <input className="field mb-3" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="they@example.com" />
+          <label className="label flex items-center gap-1.5"><Phone size={12} /> Phone number</label>
+          <input className="field mb-3" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91…" />
+          <label className="label flex items-center gap-1.5"><Wallet size={12} /> Solana wallet address <span className="text-mist font-body">· optional</span></label>
           <input className="field mb-4 mono text-xs" value={form.walletAddress}
-            onChange={(e) => setForm({ ...form, walletAddress: e.target.value })} placeholder="0x…" />
+            onChange={(e) => setForm({ ...form, walletAddress: e.target.value })} placeholder="optional" />
           <button className="btn-primary w-full" onClick={add} disabled={saving || !form.name.trim()}>{saving ? "Adding…" : "Add guardian"}</button>
         </div>
 
+        {/* List + per-guardian config */}
         <div className="card lg:col-span-2">
           {state === null ? (
             <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-20" />)}</div>
@@ -92,34 +117,93 @@ export default function Guardians() {
                     <span className="grid place-items-center h-9 w-9 rounded-full bg-paper border border-line text-sm text-mist shrink-0">{g.name?.[0] || "?"}</span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm">{g.name}</span>
-                      {g.email && <span className="block text-xs text-mist truncate">{g.email}</span>}
+                      <span className="block text-xs text-mist truncate">{[g.email, g.phone].filter(Boolean).join(" · ") || "no contact yet"}</span>
                     </span>
                     {g.confirmed
                       ? <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> confirmed</span>
                       : <span className="pill bg-paper text-mist border border-line">standing by</span>}
+                    <button className="btn-secondary btn-sm" onClick={() => openConfig(g)}>
+                      <SlidersHorizontal size={13} /> Access
+                      <ChevronDown size={13} className={`transition ${openId === g._id ? "rotate-180" : ""}`} />
+                    </button>
                   </div>
-                  <div className="mt-3 ml-12">
-                    <p className="text-xs text-mist mb-1.5">Can access:</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {CATEGORIES.map((c) => {
-                        const on = (g.access || []).includes(c);
-                        return (
-                          <button key={c} onClick={() => toggleAccess(g, c)}
-                            className={`chip text-xs !py-1 ${on ? "border-sage bg-sage/10 text-sage-600" : "border-line text-mist hover:border-mist/50"}`}>
-                            {on && <Check size={11} />} {c}
-                          </button>
-                        );
-                      })}
+
+                  {openId === g._id && (
+                    <div className="mt-4 ml-12 rounded-xl bg-paper border border-line p-4 rise">
+                      <p className="text-xs text-mist mb-3">For each asset, set its rule. <span className="text-sage-600">Visible / Transfer</span> assets can be switched on for {g.name}. <span className="text-ink">Deletion-request</span> assets are hidden from every guardian.</p>
+                      {loadingCfg || !config ? (
+                        <div className="flex items-center gap-2 text-sm text-mist py-4"><Loader2 size={15} className="animate-spin" /> Loading…</div>
+                      ) : (
+                        <>
+                          {config.assets.length === 0 ? (
+                            <p className="text-sm text-mist py-2">No transferable assets yet — add some in your vault.</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {config.assets.map((a) => (
+                                <li key={a.id} className="flex items-center gap-3 rounded-lg bg-card border border-line px-3 py-2">
+                                  <span className="flex-1 min-w-0">
+                                    <span className="block text-sm truncate">{a.label}</span>
+                                    <span className="block text-xs text-mist">{a.platform || a.type}</span>
+                                  </span>
+                                  <RuleSelect value="transfer" onDelete={() => setAssetDisposition(a.id, "delete")} />
+                                  <label className="flex items-center gap-1.5 text-xs text-mist shrink-0">
+                                    {a.granted ? "On" : "Off"}
+                                    <Switch on={a.granted} onClick={() => toggleAsset(a.id)} />
+                                  </label>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          {config.files.length > 0 && (
+                            <>
+                              <p className="text-xs text-mist mt-4 mb-2 flex items-center gap-1.5"><FileText size={12} /> Files</p>
+                              <ul className="space-y-2">
+                                {config.files.map((f) => (
+                                  <li key={f.id} className="flex items-center gap-3 rounded-lg bg-card border border-line px-3 py-2">
+                                    <span className="flex-1 min-w-0 text-sm truncate">{f.name}</span>
+                                    <label className="flex items-center gap-1.5 text-xs text-mist shrink-0">
+                                      {f.granted ? "On" : "Off"}
+                                      <Switch on={f.granted} onClick={() => toggleFile(f.id)} />
+                                    </label>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="text-center py-12 text-mist text-sm">No guardians yet. Add three people you trust on the left.</div>
+            <div className="text-center py-12 text-mist text-sm">No guardians yet. Add people you trust on the left.</div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+// The lifecycle rule shown per asset in a guardian's panel. Currently-transfer assets show
+// here; choosing "Deletion request" flags it globally and removes it from the list.
+function RuleSelect({ value, onDelete }) {
+  return (
+    <div className="inline-flex rounded-lg border border-line p-0.5 shrink-0">
+      <span className="inline-flex items-center gap-1 rounded-md bg-sage/15 text-sage-600 px-2 py-1 text-[11px]"><Send size={11} /> Transfer</span>
+      <button onClick={onDelete} title="Flag for deletion (hides it from all guardians)"
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-mist hover:text-ink"><Ban size={11} /> Delete</button>
+    </div>
+  );
+}
+
+function Switch({ on, onClick }) {
+  return (
+    <button onClick={onClick} role="switch" aria-checked={on}
+      className={`relative h-5 w-9 rounded-full transition shrink-0 ${on ? "bg-sage" : "bg-line"}`}>
+      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+    </button>
   );
 }

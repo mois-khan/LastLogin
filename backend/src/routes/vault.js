@@ -2,6 +2,7 @@ import { Router } from "express";
 import { auth } from "../middleware/auth.js";
 import VaultItem from "../models/VaultItem.js";
 import User from "../models/User.js";
+import Guardian from "../models/Guardian.js";
 import { encrypt, decrypt, vaultFingerprint } from "../services/crypto/vault.js";
 
 const r = Router();
@@ -30,22 +31,49 @@ r.post("/key", async (req, res, next) => {
 // --- Items ---
 r.get("/", async (req, res, next) => {
   try {
-    const items = await VaultItem.find({ userId: req.user.id });
-    res.json(items.map((i) => ({ id: i._id, type: i.type, label: i.label, scheme: i.scheme })));
+    const items = await VaultItem.find({ userId: req.user.id }).sort({ createdAt: 1 });
+    res.json(items.map((i) => ({ id: i._id, type: i.type, label: i.label, platform: i.platform, disposition: i.disposition, scheme: i.scheme })));
   } catch (e) { next(e); }
 });
 
 r.post("/", async (req, res, next) => {
   try {
-    const { type, label, blob, fields, secret } = req.body;
+    const { type, label, blob, fields, secret, platform, disposition } = req.body;
     let scheme, storedBlob;
     if (blob && blob.iv && blob.data) {
-      scheme = "client"; storedBlob = { iv: blob.iv, data: blob.data }; // zero-knowledge ciphertext from the browser
+      scheme = "client"; storedBlob = { iv: blob.iv, data: blob.data }; // legacy zero-knowledge ciphertext
     } else {
-      scheme = "server"; storedBlob = encrypt(fields ? JSON.stringify(fields) : (secret ?? "")); // legacy fallback
+      scheme = "server"; storedBlob = encrypt(fields ? JSON.stringify(fields) : (secret ?? "")); // encrypted at rest, server can open for handover
     }
-    const item = await VaultItem.create({ userId: req.user.id, type, label, scheme, blob: storedBlob });
-    res.json({ id: item._id, type, label, scheme });
+    const item = await VaultItem.create({
+      userId: req.user.id, type, label, platform,
+      disposition: disposition === "delete" ? "delete" : "transfer",
+      scheme, blob: storedBlob,
+    });
+    res.json({ id: item._id, type, label, platform, disposition: item.disposition, scheme });
+  } catch (e) { next(e); }
+});
+
+// Set an asset's lifecycle rule. Flipping to "delete" also revokes any guardian grant —
+// a deletion-flagged asset must be invisible to every guardian (data-isolation constraint).
+r.patch("/:id/disposition", async (req, res, next) => {
+  try {
+    const disposition = req.body.disposition === "delete" ? "delete" : "transfer";
+    const item = await VaultItem.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id }, { disposition }, { new: true }
+    );
+    if (!item) return res.status(404).json({ error: "not found" });
+    if (disposition === "delete")
+      await Guardian.updateMany({ userId: req.user.id }, { $pull: { assetAccess: item._id } });
+    res.json({ id: item._id, disposition: item.disposition });
+  } catch (e) { next(e); }
+});
+
+r.delete("/:id", async (req, res, next) => {
+  try {
+    await VaultItem.deleteOne({ _id: req.params.id, userId: req.user.id });
+    await Guardian.updateMany({ userId: req.user.id }, { $pull: { assetAccess: req.params.id } });
+    res.json({ ok: true });
   } catch (e) { next(e); }
 });
 

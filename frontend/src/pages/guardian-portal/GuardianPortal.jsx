@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { Mail, Loader2, ShieldCheck, Lock, ArrowRight, Download } from "lucide-react";
+import { Mail, Loader2, ShieldCheck, Lock, ArrowRight, Download, AudioLines, Paperclip, KeyRound } from "lucide-react";
 import { api } from "../../lib/api.js";
 
-// A guardian verifies their email (OTP) and accesses exactly what the owner permitted (RBAC).
+// A guardian verifies their email (OTP), then sees — in strict order — the messages left
+// for the family, the accounts/assets granted to them, and their files. Deletion-flagged
+// items never reach this screen (filtered server-side).
 export default function GuardianPortal() {
   const { userId } = useParams();
   const [email, setEmail] = useState("");
@@ -25,47 +27,53 @@ export default function GuardianPortal() {
     catch (e2) { setErr(e2.response?.data?.error || "Invalid code."); } finally { setBusy(false); }
   };
 
+  // Export everything granted: a readable credentials file + each attached file.
+  const downloadAll = () => {
+    const lines = [`LastLogin — released to ${data.name}`, ""];
+    if (data.messages?.length) {
+      lines.push("=== MESSAGES ===");
+      data.messages.forEach((m) => lines.push(`\nFor ${m.recipientName || "family"} (${m.language}):`, m.text));
+      lines.push("");
+    }
+    if (data.items?.length) {
+      lines.push("=== ACCOUNTS & ASSETS ===");
+      data.items.forEach((it) => {
+        lines.push(`\n• ${it.label} [${it.platform || it.type}]`);
+        if (it.locked) lines.push("  (encrypted — opens with the guardian quorum)");
+        else Object.entries(it.fields || {}).forEach(([k, v]) => lines.push(`  ${k}: ${v}`));
+      });
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `lastlogin-${data.name || "estate"}.txt`; a.click();
+    URL.revokeObjectURL(url);
+    (data.files || []).forEach((f, i) => setTimeout(() => {
+      const el = document.createElement("a"); el.href = f.dataUrl; el.download = f.name; el.click();
+    }, 200 * (i + 1)));
+  };
+
   if (step === "done" && data) {
     const executing = data.estateState === "EXECUTING";
+    const hasAny = (data.messages?.length || 0) + (data.items?.length || 0) + (data.files?.length || 0) > 0;
     return (
       <div className="min-h-screen">
         <div className="mx-auto max-w-2xl px-6 py-16">
           <p className="text-xs uppercase tracking-[0.2em] text-mist">Guardian access</p>
           <h1 className="font-display text-title mt-2 mb-1">Welcome, {data.name}</h1>
-          <p className="text-mist mb-8">You're entrusted with: <span className="text-ink">{data.access?.length ? data.access.join(", ") : "no categories yet"}</span>.</p>
 
           {!executing ? (
-            <div className="card text-center py-12 text-mist">
+            <div className="card text-center py-12 text-mist mt-6">
               <ShieldCheck size={26} className="mx-auto mb-2 text-sage-600" />
               Nothing is released while they're alive. You'll have access here once a passing is verified.
             </div>
           ) : (
             <>
-              {data.items?.length > 0 && (
-                <div className="space-y-3">
-                  {data.items.map((it, idx) => (
-                    <div key={idx} className="card rise">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="flex-1 font-medium">{it.label}</span>
-                        <span className="pill bg-paper text-mist border border-line">{it.type}</span>
-                      </div>
-                      {it.locked ? (
-                        <p className="text-xs text-mist flex items-center gap-1.5"><Lock size={12} /> Encrypted — opens when 2 guardians combine their keys.</p>
-                      ) : (
-                        <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-                          {Object.entries(it.fields || {}).map(([k, v]) => (
-                            <div key={k}><dt className="text-xs uppercase tracking-wide text-mist">{k}</dt><dd className="mono text-ink break-words">{v}</dd></div>
-                          ))}
-                        </dl>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="text-mist mb-8">Everything they left for you.</p>
 
-              {data.messages?.length > 0 && (
-                <section className="mt-8">
-                  <h2 className="font-display text-h mb-3">Messages left for the family</h2>
+              {/* 1 — Audio phase: messages first */}
+              <section className="mb-8">
+                <h2 className="font-display text-h mb-3 flex items-center gap-2"><AudioLines size={18} className="text-ember" /> Their messages</h2>
+                {data.messages?.length ? (
                   <div className="space-y-3">
                     {data.messages.map((m) => (
                       <div key={m.id} className="card rise">
@@ -80,11 +88,53 @@ export default function GuardianPortal() {
                       </div>
                     ))}
                   </div>
+                ) : <p className="text-sm text-mist">No messages were left.</p>}
+              </section>
+
+              {/* 2 — Asset phase: only what was toggled on for this guardian */}
+              <section className="mb-8">
+                <h2 className="font-display text-h mb-3 flex items-center gap-2"><KeyRound size={18} className="text-ember" /> Accounts & assets</h2>
+                {data.items?.length ? (
+                  <div className="space-y-3">
+                    {data.items.map((it, idx) => (
+                      <div key={idx} className="card rise">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="flex-1 font-medium">{it.label}</span>
+                          <span className="pill bg-paper text-mist border border-line">{it.platform || it.type}</span>
+                        </div>
+                        {it.locked ? (
+                          <p className="text-xs text-mist flex items-center gap-1.5"><Lock size={12} /> Encrypted — opens when 2 guardians combine their keys.</p>
+                        ) : (
+                          <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                            {Object.entries(it.fields || {}).map(([k, v]) => (
+                              <div key={k}><dt className="text-xs uppercase tracking-wide text-mist">{k}</dt><dd className="mono text-ink break-words">{v}</dd></div>
+                            ))}
+                          </dl>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="text-sm text-mist">No accounts were shared with you.</p>}
+              </section>
+
+              {/* 3 — Files */}
+              {data.files?.length > 0 && (
+                <section className="mb-8">
+                  <h2 className="font-display text-h mb-3 flex items-center gap-2"><Paperclip size={18} className="text-ember" /> Files</h2>
+                  <ul className="space-y-2">
+                    {data.files.map((f) => (
+                      <li key={f.id} className="card flex items-center gap-3 !py-3">
+                        <span className="flex-1 min-w-0 text-sm truncate">{f.name}</span>
+                        <a href={f.dataUrl} download={f.name} className="btn-secondary btn-sm"><Download size={13} /> Download</a>
+                      </li>
+                    ))}
+                  </ul>
                 </section>
               )}
 
-              {!data.items?.length && !data.messages?.length && (
-                <p className="text-mist">Nothing is shared with you.</p>
+              {/* 4 — Export everything */}
+              {hasAny && (
+                <button className="btn-primary w-full" onClick={downloadAll}><Download size={16} /> Download everything</button>
               )}
             </>
           )}
