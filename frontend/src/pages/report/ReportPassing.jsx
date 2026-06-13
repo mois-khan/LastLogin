@@ -19,6 +19,7 @@ export default function ReportPassing() {
   const [otpInfo, setOtpInfo] = useState(null); // { to, demoCode }
   const [codeInput, setCodeInput] = useState("");
   const [otpErr, setOtpErr] = useState("");
+  const [secAnswer, setSecAnswer] = useState("");
   const [busyG, setBusyG] = useState(null); // guardian index with an in-flight request
 
   const loadStatus = async () => setStatus((await api.get(`/trigger/status/${userId}`)).data);
@@ -46,8 +47,8 @@ export default function ReportPassing() {
   const verifyConfirm = async (i) => {
     setBusyG(i); setOtpErr("");
     try {
-      await api.post("/trigger/confirm", { userId, guardianIndex: i, code: codeInput.trim() });
-      setOtpFor(null); setOtpInfo(null); setCodeInput("");
+      await api.post("/trigger/confirm", { userId, guardianIndex: i, code: codeInput.trim(), securityAnswer: secAnswer.trim() });
+      setOtpFor(null); setOtpInfo(null); setCodeInput(""); setSecAnswer("");
       await loadStatus();
     } catch (e) {
       setOtpErr(e.response?.data?.error || "Couldn't verify. Try again.");
@@ -145,17 +146,23 @@ export default function ReportPassing() {
                     )}
                   </div>
                   {otpFor === i && !g.confirmed && (
-                    <div className="mt-3 ml-11 p-3 rounded-xl bg-paper border border-line rise">
-                      <p className="text-xs text-mist flex items-center gap-1.5 mb-2"><Mail size={13} /> Code sent to {otpInfo?.to}</p>
-                      {otpInfo?.demoCode && <p className="text-xs text-mist mb-2">Demo code: <span className="mono text-ink">{otpInfo.demoCode}</span></p>}
-                      <div className="flex gap-2">
-                        <input className="field !py-1.5 mono tracking-[0.3em]" placeholder="000000" maxLength={6} value={codeInput}
-                          onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, ""))} />
-                        <button className="btn-primary btn-sm shrink-0" disabled={busyG === i || codeInput.length < 6} onClick={() => verifyConfirm(i)}>
-                          {busyG === i ? <Loader2 size={14} className="animate-spin" /> : "Verify & confirm"}
-                        </button>
-                      </div>
-                      {otpErr && <p className="text-xs text-ember mt-2">{otpErr}</p>}
+                    <div className="mt-3 ml-11 p-3 rounded-xl bg-paper border border-line rise space-y-2">
+                      <p className="text-xs text-mist flex items-center gap-1.5"><Mail size={13} /> Code sent to {otpInfo?.to}</p>
+                      {otpInfo?.demoCode && <p className="text-xs text-mist">Demo code: <span className="mono text-ink">{otpInfo.demoCode}</span></p>}
+                      <input className="field !py-1.5 mono tracking-[0.3em]" placeholder="000000" maxLength={6} value={codeInput}
+                        onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, ""))} />
+                      {status?.securityQuestion && (
+                        <div>
+                          <p className="text-xs text-ink mb-1">{status.securityQuestion}</p>
+                          <input className="field !py-1.5" placeholder="Your answer" value={secAnswer}
+                            onChange={(e) => setSecAnswer(e.target.value)} />
+                        </div>
+                      )}
+                      <button className="btn-primary btn-sm w-full" onClick={() => verifyConfirm(i)}
+                        disabled={busyG === i || codeInput.length < 6 || (status?.securityQuestion && !secAnswer.trim())}>
+                        {busyG === i ? <Loader2 size={14} className="animate-spin" /> : "Verify & confirm"}
+                      </button>
+                      {otpErr && <p className="text-xs text-ember">{otpErr}</p>}
                     </div>
                   )}
                 </li>

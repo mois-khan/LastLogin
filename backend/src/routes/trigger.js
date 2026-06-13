@@ -67,6 +67,12 @@ r.post("/confirm", async (req, res, next) => {
       if (!g) return res.status(400).json({ error: "guardian not found" });
       if (!g.otpCode || g.otpCode !== code || (g.otpExpires && g.otpExpires < new Date()))
         return res.status(401).json({ error: "Invalid or expired verification code." });
+      const owner = await User.findById(userId).select("securityQuestion");
+      if (owner?.securityQuestion?.answerHash) {
+        const provided = crypto.createHash("sha256").update(String(req.body.securityAnswer || "").trim().toLowerCase()).digest("hex");
+        if (provided !== owner.securityQuestion.answerHash)
+          return res.status(401).json({ error: "Security answer is incorrect." });
+      }
       wallet = g.walletAddress;
       txHash = process.env.PROOF_TX || null;
     }
@@ -112,6 +118,7 @@ r.get("/status/:userId", async (req, res, next) => {
       guardians: guardians.map((g) => ({ name: g.name, confirmed: g.confirmed })),
       confirmedGuardians: guardians.filter((g) => g.confirmed).length,
       threshold: 2,
+      securityQuestion: user?.securityQuestion?.question || null,
       events,
     });
   } catch (e) { next(e); }

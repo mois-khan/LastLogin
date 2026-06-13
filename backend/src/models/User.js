@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema(
     // The master passphrase / derived key NEVER reach the server.
     vaultSalt: String,
     vaultVerifier: { iv: String, data: String },
+    // Optional extra guardian challenge: a question + a hashed answer.
+    securityQuestion: { question: String, answerHash: String },
   },
   { timestamps: true }
 );
