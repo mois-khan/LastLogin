@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Sparkles, Lock, Users, Mic, Flame, LogOut } from "lucide-react";
+import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const links = [
@@ -7,6 +7,7 @@ const links = [
   { to: "/app/vault", label: "Vault", Icon: Lock },
   { to: "/app/guardians", label: "Guardians", Icon: Users },
   { to: "/app/messages", label: "Messages", Icon: Mic },
+  { to: "/app/executor", label: "Accounts", Icon: Mail },
 ];
 
 export default function Shell() {

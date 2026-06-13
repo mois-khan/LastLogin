@@ -10,6 +10,7 @@ import guardianRoutes from "./routes/guardians.js";
 import messageNote from "./routes/proofOfLife.js";
 import aiRoutes from "./routes/ai.js";
 import triggerRoutes from "./routes/trigger.js";
+import accountRoutes from "./routes/accounts.js";
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use("/api/guardians", guardianRoutes);
 app.use("/api/proof-of-life", messageNote);
 app.use("/api/ai", aiRoutes);
 app.use("/api/trigger", triggerRoutes);
+app.use("/api/accounts", accountRoutes);
 
 app.use(errorHandler);
 
