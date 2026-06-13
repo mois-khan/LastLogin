@@ -9,6 +9,9 @@ const vaultItemSchema = new mongoose.Schema(
       required: true,
     },
     label: String,
+    // "client" = zero-knowledge (encrypted in the browser; server can't read it).
+    // "server" = legacy fallback (encrypted server-side). New items are "client".
+    scheme: { type: String, enum: ["server", "client"], default: "server" },
     // AES-256-GCM blob — raw secret is NEVER stored
     blob: { iv: String, tag: String, data: String },
   },

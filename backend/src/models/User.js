@@ -8,6 +8,10 @@ const userSchema = new mongoose.Schema(
     voiceId: String, // ElevenLabs cloned voice id
     lastSeen: { type: Date, default: Date.now }, // proof-of-life
     estateState: { type: String, enum: ["ACTIVE", "EXECUTING"], default: "ACTIVE" },
+    // Zero-knowledge vault: PBKDF2 salt + a tiny client-encrypted verifier blob.
+    // The master passphrase / derived key NEVER reach the server.
+    vaultSalt: String,
+    vaultVerifier: { iv: String, data: String },
   },
   { timestamps: true }
 );
