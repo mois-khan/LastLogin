@@ -29,12 +29,21 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // Merge fields into the cached user and persist (e.g. voiceId after cloning).
+  const updateUser = (patch) => {
+    setUser((u) => {
+      const merged = { ...(u || {}), ...patch };
+      localStorage.setItem("ll_user", JSON.stringify(merged));
+      return merged;
+    });
+  };
+
   // gentle proof-of-life ping on app open
   useEffect(() => {
     if (user) api.post("/proof-of-life").catch(() => {});
   }, [user?.id]);
 
-  return <AuthCtx.Provider value={{ user, login, register, logout }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ user, login, register, logout, updateUser }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);
