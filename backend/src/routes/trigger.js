@@ -12,6 +12,7 @@ import VaultItem from "../models/VaultItem.js";
 import { decrypt } from "../services/crypto/vault.js";
 import Message from "../models/Message.js";
 import TriggerEvent from "../models/TriggerEvent.js";
+import Otp from "../models/Otp.js";
 import * as gemini from "../services/ai/gemini.js";
 import * as chain from "../services/blockchain/ethers.js";
 
@@ -19,8 +20,16 @@ const UPLOAD_DIR = path.join(os.tmpdir(), "lastlogin-uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const upload = multer({ dest: UPLOAD_DIR });
 const r = Router();
-const recipientOtps = new Map(); // `${userId}:${email}` -> { code, expires }
-const guardianOtps = new Map(); // guardian portal access codes
+// OTPs persisted in Mongo (survive a backend reload; the in-memory Map did not).
+async function setOtp(key, code) {
+  await Otp.findOneAndUpdate({ key }, { code, expiresAt: new Date(Date.now() + 10 * 60 * 1000) }, { upsert: true });
+}
+async function takeOtp(key, code) {
+  const rec = await Otp.findOne({ key });
+  if (!rec || rec.code !== code || rec.expiresAt < new Date()) return false;
+  await Otp.deleteOne({ key });
+  return true;
+}
 
 // Step 1: a guardian uploads a death certificate -> Gemini Vision gate
 r.post("/verify", upload.single("cert"), async (req, res, next) => {
@@ -168,7 +177,7 @@ r.post("/recipient-otp", async (req, res, next) => {
     const has = await Message.exists({ userId, delivered: true, recipientEmail: email });
     if (!has) return res.status(404).json({ error: "No messages were left for that address." });
     const code = String(crypto.randomInt(100000, 1000000));
-    recipientOtps.set(`${userId}:${email.toLowerCase()}`, { code, expires: Date.now() + 10 * 60 * 1000 });
+    await setOtp(`rcp:${userId}:${email.toLowerCase()}`, code);
     let sent = false;
     try { const r2 = await sendEmail({ to: email, subject: "Your access code", text: `Your code to open the message left for you: ${code}` }); sent = !r2?.mocked; } catch {}
     res.json({ sent, demoCode: sent ? undefined : code });
@@ -178,9 +187,7 @@ r.post("/recipient-otp", async (req, res, next) => {
 r.post("/inbox", async (req, res, next) => {
   try {
     const { userId, email, code } = req.body;
-    const rec = recipientOtps.get(`${userId}:${(email || "").toLowerCase()}`);
-    if (!rec || rec.code !== code || rec.expires < Date.now()) return res.status(401).json({ error: "Invalid or expired code." });
-    recipientOtps.delete(`${userId}:${email.toLowerCase()}`); // single-use
+    if (!(await takeOtp(`rcp:${userId}:${(email || "").toLowerCase()}`, code))) return res.status(401).json({ error: "Invalid or expired code." });
     const user = await User.findById(userId);
     const messages = await Message.find({ userId, delivered: true, recipientEmail: email });
     res.json({ from: user?.name, messages });
@@ -195,7 +202,7 @@ r.post("/guardian-otp", async (req, res, next) => {
     const g = await Guardian.findOne({ userId, email });
     if (!g) return res.status(404).json({ error: "You're not listed as a guardian for this person." });
     const code = String(crypto.randomInt(100000, 1000000));
-    guardianOtps.set(`${userId}:${email.toLowerCase()}`, { code, expires: Date.now() + 10 * 60 * 1000 });
+    await setOtp(`ga:${userId}:${email.toLowerCase()}`, code);
     let sent = false;
     try { const r2 = await sendEmail({ to: email, subject: "Your guardian access code", text: `Your code to access this estate: ${code}` }); sent = !r2?.mocked; } catch {}
     res.json({ name: g.name, sent, demoCode: sent ? undefined : code });
@@ -205,9 +212,7 @@ r.post("/guardian-otp", async (req, res, next) => {
 r.post("/guardian-access", async (req, res, next) => {
   try {
     const { userId, email, code } = req.body;
-    const rec = guardianOtps.get(`${userId}:${(email || "").toLowerCase()}`);
-    if (!rec || rec.code !== code || rec.expires < Date.now()) return res.status(401).json({ error: "Invalid or expired code." });
-    guardianOtps.delete(`${userId}:${email.toLowerCase()}`); // single-use
+    if (!(await takeOtp(`ga:${userId}:${(email || "").toLowerCase()}`, code))) return res.status(401).json({ error: "Invalid or expired code." });
     const g = await Guardian.findOne({ userId, email });
     const user = await User.findById(userId).select("name estateState");
     let items = [];
