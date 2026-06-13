@@ -10,5 +10,6 @@ contracts/cache/
 contracts/typechain-types/
 .DS_Store
 *.log
+backend/src/fixtures/*.mp3
 coverage/
 /tmp/

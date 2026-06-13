@@ -44,14 +44,22 @@ When you have enough, end your reply with a single line of valid JSON prefixed b
 
 /** Conversational will setup. messages = [{role:'user'|'model', text}] */
 export async function chatWillAssistant(messages) {
-  const history = messages.map((m) => `${m.role === "user" ? "User" : "Guide"}: ${m.text}`).join("\n");
-  const reply = await generate([{ text: history + "\nGuide:" }], { system: WILL_SYSTEM });
-  let extracted = null;
-  const marker = reply.indexOf("[[VAULT]]");
-  if (marker !== -1) {
-    try { extracted = JSON.parse(reply.slice(marker + 9).trim()); } catch { /* ignore */ }
+  try {
+    const history = messages.map((m) => `${m.role === "user" ? "User" : "Guide"}: ${m.text}`).join("\n");
+    const reply = await generate([{ text: history + "\nGuide:" }], { system: WILL_SYSTEM });
+    let extracted = null;
+    const marker = reply.indexOf("[[VAULT]]");
+    if (marker !== -1) {
+      try { extracted = JSON.parse(reply.slice(marker + 9).trim()); } catch { /* ignore */ }
+    }
+    return { reply: marker !== -1 ? reply.slice(0, marker).trim() : reply.trim(), extracted };
+  } catch {
+    // Never leave the user staring at a dead chat — keep the conversation moving.
+    return {
+      reply: "I'm having a brief moment connecting — but I'm still here. While I reconnect: who would you most want to handle your accounts, and is there anything you'd want them to know?",
+      extracted: null,
+    };
   }
-  return { reply: marker !== -1 ? reply.slice(0, marker).trim() : reply.trim(), extracted };
 }
 
 /** Vision check of an uploaded death certificate. Hackathon-grade heuristic, not legal advice. */
@@ -59,12 +67,15 @@ export async function verifyDeathCertificate(imageBase64, mimeType = "image/jpeg
   const prompt =
     "You are verifying whether the attached image is plausibly an official death certificate. " +
     "Return JSON: {looksValid:boolean, confidence:0-1, deceasedName:string|null, date:string|null, reason:string}.";
-  const text = await generate(
-    [{ text: prompt }, { inlineData: { mimeType, data: imageBase64 } }],
-    { json: true }
-  );
-  try { return JSON.parse(text); }
-  catch { return { looksValid: false, confidence: 0, reason: "could not parse response" }; }
+  try {
+    const text = await generate(
+      [{ text: prompt }, { inlineData: { mimeType, data: imageBase64 } }],
+      { json: true }
+    );
+    return JSON.parse(text);
+  } catch {
+    return { looksValid: false, confidence: 0, deceasedName: null, date: null, reason: "Couldn't verify the document right now — please try again." };
+  }
 }
 
 /** Pre-fill a platform-specific account closure / memorialization request. */
