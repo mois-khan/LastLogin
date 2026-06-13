@@ -5,22 +5,28 @@
 :root { color-scheme: light; }
 body {
   margin: 0;
-  background: #FBF7F0;
+  background: radial-gradient(1100px 520px at 50% -8%, #FFFDF8 0%, #FBF7F0 58%);
+  background-attachment: fixed;
   color: #2B2A28;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; letter-spacing: -0.015em; line-height: 1.12; }
+::selection { background: rgba(200, 116, 58, 0.18); }
 
 @layer components {
-  .card { @apply bg-card border border-line rounded-2xl p-6 shadow-[0_1px_2px_rgba(43,42,40,0.04)]; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition; }
-  .btn-ember { @apply btn bg-ember text-white hover:brightness-95; }
-  .btn-ghost { @apply btn border border-line text-ink hover:bg-paper; }
-  .field { @apply w-full rounded-xl border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ember; }
+  .card { @apply bg-card border border-line rounded-2xl p-6 shadow-[0_1px_3px_rgba(43,42,40,0.05),0_8px_24px_-14px_rgba(43,42,40,0.10)]; }
+  .card-hover { @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_2px_6px_rgba(43,42,40,0.06),0_16px_34px_-16px_rgba(43,42,40,0.18)]; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember/30 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:cursor-not-allowed; }
+  .btn-ember { @apply btn bg-ember text-white shadow-[0_1px_2px_rgba(200,116,58,0.45)] hover:brightness-105 active:translate-y-px; }
+  .btn-ghost { @apply btn border border-line text-ink hover:bg-paper hover:border-mist/40 active:translate-y-px; }
+  .field { @apply w-full rounded-xl border border-line bg-paper px-4 py-2.5 text-sm outline-none transition placeholder:text-mist/60 focus:border-ember focus:ring-2 focus:ring-ember/15; }
   .label { @apply block text-xs uppercase tracking-wide text-mist mb-1.5; }
   .pill { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm transition cursor-pointer select-none; }
   .mono { font-family: 'IBM Plex Mono', monospace; }
+  .skeleton { @apply animate-pulse rounded-md bg-line/60; }
 }
 
 /* Candle flicker — the signature. Goes still when .flame--still is applied (death). */
@@ -30,4 +36,11 @@ h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; letter-s
 }
 .flame { transform-origin: bottom center; animation: flicker 2.4s ease-in-out infinite; }
 .flame--still { animation: none; opacity: .25; }
-@media (prefers-reduced-motion: reduce) { .flame { animation: none; } }
+
+/* gentle entrance for content */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .35s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flame, .rise { animation: none; }
+}
