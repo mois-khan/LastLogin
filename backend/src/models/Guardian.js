@@ -6,6 +6,7 @@ const guardianSchema = new mongoose.Schema(
     name: String,
     email: String,
     walletAddress: String, // confirms on-chain
+    access: { type: [String], default: [] }, // vault categories this guardian may see (RBAC)
     confirmed: { type: Boolean, default: false },
     confirmedAt: Date,
     otpCode: String, // emailed verification code (single-use)
