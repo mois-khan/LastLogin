@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   UserPlus, ShieldCheck, Check, KeyRound, Phone, Wallet, SlidersHorizontal,
-  ChevronDown, Send, Ban, FileText, Loader2,
+  ChevronDown, FileText, Loader2,
 } from "lucide-react";
 import { api } from "../../lib/api.js";
 
@@ -50,11 +50,6 @@ export default function Guardians() {
     const files = config.files.map((f) => (f.id === fileId ? { ...f, granted: !f.granted } : f));
     setConfig((c) => ({ ...c, files }));
     await api.post(`/guardians/${openId}/access`, { fileAccess: files.filter((f) => f.granted).map((f) => f.id) });
-  };
-  // Lifecycle rule is global to the asset. Flagging "delete" hides it from every guardian.
-  const setAssetDisposition = async (assetId, disposition) => {
-    await api.patch(`/vault/${assetId}/disposition`, { disposition });
-    setConfig((await api.get(`/guardians/${openId}/config`)).data); // reload (delete items drop out)
   };
 
   const guardians = state?.guardians ?? [];
@@ -130,7 +125,7 @@ export default function Guardians() {
 
                   {openId === g._id && (
                     <div className="mt-4 ml-12 rounded-xl bg-paper border border-line p-4 rise">
-                      <p className="text-xs text-mist mb-3">For each asset, set its rule. <span className="text-sage-600">Visible / Transfer</span> assets can be switched on for {g.name}. <span className="text-ink">Deletion-request</span> assets are hidden from every guardian.</p>
+                      <p className="text-xs text-mist mb-3">These are the assets marked <span className="text-sage-600">Visible / Transfer</span> in your vault — toggle which ones {g.name} receives. Deletion-flagged assets never appear here.</p>
                       {loadingCfg || !config ? (
                         <div className="flex items-center gap-2 text-sm text-mist py-4"><Loader2 size={15} className="animate-spin" /> Loading…</div>
                       ) : (
@@ -145,7 +140,6 @@ export default function Guardians() {
                                     <span className="block text-sm truncate">{a.label}</span>
                                     <span className="block text-xs text-mist">{a.platform || a.type}</span>
                                   </span>
-                                  <RuleSelect value="transfer" onDelete={() => setAssetDisposition(a.id, "delete")} />
                                   <label className="flex items-center gap-1.5 text-xs text-mist shrink-0">
                                     {a.granted ? "On" : "Off"}
                                     <Switch on={a.granted} onClick={() => toggleAsset(a.id)} />
@@ -183,18 +177,6 @@ export default function Guardians() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// The lifecycle rule shown per asset in a guardian's panel. Currently-transfer assets show
-// here; choosing "Deletion request" flags it globally and removes it from the list.
-function RuleSelect({ value, onDelete }) {
-  return (
-    <div className="inline-flex rounded-lg border border-line p-0.5 shrink-0">
-      <span className="inline-flex items-center gap-1 rounded-md bg-sage/15 text-sage-600 px-2 py-1 text-[11px]"><Send size={11} /> Transfer</span>
-      <button onClick={onDelete} title="Flag for deletion (hides it from all guardians)"
-        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-mist hover:text-ink"><Ban size={11} /> Delete</button>
     </div>
   );
 }

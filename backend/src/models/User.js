@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, unique: true, required: true, lowercase: true },
     passwordHash: { type: String, required: true },
     name: String,
+    phone: { type: String, index: true }, // lets a guardian look up the estate by phone
     voiceId: String, // ElevenLabs cloned voice id
     lastSeen: { type: Date, default: Date.now }, // proof-of-life
     estateState: { type: String, enum: ["ACTIVE", "EXECUTING"], default: "ACTIVE" },

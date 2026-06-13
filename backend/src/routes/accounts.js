@@ -49,11 +49,18 @@ r.post("/:id/send", async (req, res, next) => {
     const to = a.contactEmail || user?.email;
     try {
       const result = await sendEmail({ to, subject: `${verb} request — ${a.platform}`, text: a.draft });
-      a.status = "sent"; a.sentAt = new Date(); await a.save();
-      res.json({ ok: true, mocked: !!result?.mocked, sentTo: to });
+      // SendGrid returns HTTP 202 when it accepts the message for delivery — proof it went out.
+      const code = result?.status || (result?.mocked ? 0 : 200);
+      a.status = "sent"; a.sentAt = new Date();
+      a.lastSend = { code, provider: result?.mocked ? "mock (no SENDGRID key set)" : "sendgrid", to, at: new Date(), error: null };
+      await a.save();
+      res.json({ ok: true, mocked: !!result?.mocked, sentTo: to, code, lastSend: a.lastSend });
     } catch (sendErr) {
-      // Resend free tier only delivers to your own verified address — surface it clearly.
-      res.json({ ok: false, error: sendErr.response?.data?.message || sendErr.message });
+      const error = sendErr.response?.data?.errors?.[0]?.message || sendErr.response?.data?.message || sendErr.message;
+      a.status = "failed";
+      a.lastSend = { code: sendErr.response?.status || 0, provider: "sendgrid", to, at: new Date(), error };
+      await a.save();
+      res.json({ ok: false, error, code: sendErr.response?.status, lastSend: a.lastSend });
     }
   } catch (e) { next(e); }
 });

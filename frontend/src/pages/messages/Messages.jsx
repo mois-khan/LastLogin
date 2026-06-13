@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download, Upload, Paperclip, Trash2, Send, Ban, Image as ImageIcon } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download, Plus, X, Globe, Users } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -18,7 +18,10 @@ export default function Messages() {
   const [cloning, setCloning] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState(null); // { tone: 'ok'|'err'|'busy', text }
-  const [form, setForm] = useState({ recipientName: "", recipientEmail: "", text: "", language: "hi-IN" });
+  const [form, setForm] = useState({ recipientName: "", text: "", language: "hi-IN" });
+  const [scope, setScope] = useState("global"); // "global" | "assigned"
+  const [recipients, setRecipients] = useState([]);
+  const [emailDraft, setEmailDraft] = useState("");
   const [result, setResult] = useState(null);
   const [saved, setSaved] = useState([]);
   const mediaRef = useRef(null);
@@ -27,25 +30,15 @@ export default function Messages() {
   const loadSaved = async () => setSaved((await api.get("/ai/messages")).data);
   useEffect(() => { loadSaved().catch(() => {}); }, []);
 
-  // File / media vault
-  const [files, setFiles] = useState([]);
-  const fileRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
-  const loadFiles = async () => setFiles((await api.get("/attachments")).data);
-  useEffect(() => { loadFiles().catch(() => {}); }, []);
-  const uploadFile = async (file) => {
-    if (!file) return;
-    setUploading(true);
-    const fd = new FormData(); fd.append("file", file);
-    try { await api.post("/attachments", fd); await loadFiles(); } finally { setUploading(false); }
+  const addRecipient = () => {
+    const email = emailDraft.trim().toLowerCase();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setStatus({ tone: "err", text: "That doesn't look like an email address." }); return; }
+    if (recipients.includes(email)) { setEmailDraft(""); return; }
+    setRecipients((arr) => [...arr, email]); setEmailDraft(""); setStatus(null);
   };
-  const flipFile = async (f) => {
-    const disposition = f.disposition === "delete" ? "transfer" : "delete";
-    setFiles((arr) => arr.map((x) => (x.id === f.id ? { ...x, disposition } : x)));
-    await api.patch(`/attachments/${f.id}/disposition`, { disposition });
-  };
-  const removeFile = async (id) => { setFiles((a) => a.filter((x) => x.id !== id)); await api.delete(`/attachments/${id}`); };
-  const fmtSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1e3)) + " KB");
+  const removeRecipient = (email) => setRecipients((arr) => arr.filter((e) => e !== email));
+  const onEmailKey = (e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addRecipient(); } };
 
   const startRec = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -72,9 +65,17 @@ export default function Messages() {
 
   const generate = async () => {
     if (!form.text.trim()) return;
+    if (scope === "assigned" && recipients.length === 0) { setStatus({ tone: "err", text: "Add at least one recipient, or choose Everyone." }); return; }
     setGenerating(true); setStatus({ tone: "busy", text: "Composing in your voice…" }); setResult(null);
     try {
-      const { data } = await api.post("/ai/messages", form);
+      const payload = {
+        recipientName: form.recipientName,
+        scope,
+        recipients: scope === "assigned" ? recipients : [],
+        text: form.text,
+        language: form.language,
+      };
+      const { data } = await api.post("/ai/messages", payload);
       setResult(data); setStatus(null); loadSaved();
     } catch (e) { setStatus({ tone: "err", text: e.response?.data?.error || "Generation failed." }); }
     finally { setGenerating(false); }
@@ -115,12 +116,49 @@ export default function Messages() {
             <span className="grid place-items-center h-6 w-6 rounded-full bg-ember text-white text-xs">2</span>
             <h3 className="text-h">Write the message</h3>
           </div>
-          <label className="label">To</label>
+
+          <label className="label">Who is this for?</label>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button type="button" onClick={() => setScope("global")}
+              className={`card card-hover !py-3 text-left ${scope === "global" ? "border-ember ring-1 ring-ember/30" : ""}`}>
+              <span className="flex items-center gap-2 text-sm font-medium"><Globe size={15} className={scope === "global" ? "text-ember" : "text-mist"} /> Everyone</span>
+              <span className="block text-xs text-mist mt-1 leading-snug">Shown on the memorial and to every guardian.</span>
+            </button>
+            <button type="button" onClick={() => setScope("assigned")}
+              className={`card card-hover !py-3 text-left ${scope === "assigned" ? "border-ember ring-1 ring-ember/30" : ""}`}>
+              <span className="flex items-center gap-2 text-sm font-medium"><Users size={15} className={scope === "assigned" ? "text-ember" : "text-mist"} /> Specific people</span>
+              <span className="block text-xs text-mist mt-1 leading-snug">Sent only to the people you name below.</span>
+            </button>
+          </div>
+
+          <label className="label">{scope === "assigned" ? "A name for this message (optional)" : "Title (optional)"}</label>
           <input className="field mb-3" value={form.recipientName}
-            onChange={(e) => setForm({ ...form, recipientName: e.target.value })} placeholder="e.g. My daughter Ananya" />
-          <label className="label">Their email — only they can open it</label>
-          <input className="field mb-3" type="email" value={form.recipientEmail}
-            onChange={(e) => setForm({ ...form, recipientEmail: e.target.value })} placeholder="ananya@example.com" />
+            onChange={(e) => setForm({ ...form, recipientName: e.target.value })}
+            placeholder={scope === "assigned" ? "e.g. For my children" : "e.g. To everyone I love"} />
+
+          {scope === "assigned" && (
+            <div className="mb-3">
+              <label className="label">Recipients — only they can open it</label>
+              <div className="flex gap-2">
+                <input className="field" type="email" value={emailDraft}
+                  onChange={(e) => setEmailDraft(e.target.value)} onKeyDown={onEmailKey}
+                  placeholder="name@example.com" />
+                <button type="button" className="btn-secondary btn-sm shrink-0" onClick={addRecipient}><Plus size={14} /> Add</button>
+              </div>
+              {recipients.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {recipients.map((email) => (
+                    <span key={email} className="chip">
+                      {email}
+                      <button type="button" className="ml-1 text-mist hover:text-ember" title="Remove" onClick={() => removeRecipient(email)}><X size={13} /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-mist mt-2">Press Enter to add each address. You can name several people.</p>
+            </div>
+          )}
+
           <label className="label">Language</label>
           <select className="field mb-3" value={form.language}
             onChange={(e) => setForm({ ...form, language: e.target.value })}>
@@ -153,9 +191,16 @@ export default function Messages() {
           <div className="space-y-3">
             {saved.map((m) => (
               <div key={m._id} className="card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">{m.recipientName || "Message"}{m.recipientEmail && <span className="text-mist font-normal"> · {m.recipientEmail}</span>}</span>
-                  <span className="pill bg-paper text-mist border border-line">{m.language}</span>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <span className="text-sm font-medium min-w-0">{m.recipientName || "Message"}</span>
+                  <span className="pill bg-paper text-mist border border-line shrink-0">{m.language}</span>
+                </div>
+                <div className="flex items-center gap-2 mb-3">
+                  {m.scope === "global" ? (
+                    <span className="pill bg-sage/12 text-sage-600"><Globe size={12} /> Everyone</span>
+                  ) : (
+                    <span className="pill bg-paper text-graphite border border-line"><Users size={12} /> {(m.recipients || []).length ? (m.recipients || []).join(", ") : "No recipients"}</span>
+                  )}
                 </div>
                 <p className="text-sm text-graphite leading-relaxed mb-3">{m.text}</p>
                 {m.audioUrl && (
@@ -169,50 +214,6 @@ export default function Messages() {
           </div>
         </div>
       )}
-
-      {/* File / media vault */}
-      <div className="mt-10 max-w-2xl">
-        <h3 className="text-h mb-1 flex items-center gap-2"><Paperclip size={18} className="text-ember" /> File vault</h3>
-        <p className="text-sm text-mist mb-4">Photos and files to leave behind — released only to the guardians you grant them to.</p>
-        <input ref={fileRef} type="file" className="hidden" onChange={(e) => uploadFile(e.target.files?.[0])} />
-        <button onClick={() => fileRef.current?.click()} disabled={uploading}
-          className="w-full card card-hover border-dashed flex flex-col items-center justify-center py-8 text-center">
-          {uploading ? (
-            <><Loader2 size={22} className="text-ember animate-spin" /><span className="mt-2 text-sm text-graphite">Uploading…</span></>
-          ) : (
-            <>
-              <span className="grid place-items-center h-11 w-11 rounded-xl bg-ember/12 text-ember"><Upload size={20} /></span>
-              <span className="mt-2 text-sm font-medium">Upload a file or photo</span>
-              <span className="mt-0.5 text-xs text-mist">From your computer or phone — images, PDFs, documents</span>
-            </>
-          )}
-        </button>
-
-        {files.length > 0 && (
-          <ul className="mt-4 space-y-2">
-            {files.map((f) => {
-              const del = f.disposition === "delete";
-              const isImg = (f.mimeType || "").startsWith("image/");
-              return (
-                <li key={f.id} className="card flex items-center gap-3 !py-3">
-                  <span className={`grid place-items-center h-9 w-9 rounded-xl shrink-0 ${del ? "bg-mist/10 text-mist" : "bg-sage/12 text-sage-600"}`}>
-                    {isImg ? <ImageIcon size={16} /> : <Paperclip size={16} />}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm truncate">{f.name}</span>
-                    <span className="block text-xs text-mist">{fmtSize(f.size || 0)}</span>
-                  </span>
-                  <button onClick={() => flipFile(f)}
-                    className={`pill border ${del ? "bg-mist/10 text-mist border-line" : "bg-sage/12 text-sage-600 border-transparent"}`}>
-                    {del ? <><Ban size={12} /> Deletion request</> : <><Send size={12} /> Visible / Transfer</>}
-                  </button>
-                  <button className="text-mist hover:text-ember p-1.5 rounded-lg hover:bg-line/40 transition" title="Remove" onClick={() => removeFile(f.id)}><Trash2 size={15} /></button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
     </div>
   );
 }
