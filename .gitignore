@@ -1,0 +1,14 @@
+node_modules/
+**/node_modules/
+.env
+**/.env
+*.local
+dist/
+frontend/dist/
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+.DS_Store
+*.log
+coverage/
+/tmp/

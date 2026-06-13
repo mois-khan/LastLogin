@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+body {
+  margin: 0;
+  background: #FBF7F0;
+  color: #2B2A28;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+
+@layer components {
+  .card { @apply bg-card border border-line rounded-2xl p-6 shadow-[0_1px_2px_rgba(43,42,40,0.04)]; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition; }
+  .btn-ember { @apply btn bg-ember text-white hover:brightness-95; }
+  .btn-ghost { @apply btn border border-line text-ink hover:bg-paper; }
+  .field { @apply w-full rounded-xl border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ember; }
+  .label { @apply block text-xs uppercase tracking-wide text-mist mb-1.5; }
+  .pill { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+}
+
+/* Candle flicker — the signature. Goes still when .flame--still is applied (death). */
+@keyframes flicker {
+  0%, 100% { transform: scale(1) rotate(-1deg); opacity: .95; }
+  50% { transform: scale(1.06) rotate(1.5deg); opacity: 1; }
+}
+.flame { transform-origin: bottom center; animation: flicker 2.4s ease-in-out infinite; }
+.flame--still { animation: none; opacity: .25; }
+@media (prefers-reduced-motion: reduce) { .flame { animation: none; } }

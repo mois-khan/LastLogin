@@ -1,0 +1,12 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: cd backend && npm i --no-audit --no-fund
+      - run: cd frontend && npm i --no-audit --no-fund && npm run build
+      - run: cd contracts && npm i --no-audit --no-fund && npx hardhat compile
