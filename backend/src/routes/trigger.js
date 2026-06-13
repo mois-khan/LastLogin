@@ -72,13 +72,18 @@ r.post("/otp", async (req, res, next) => {
 r.post("/confirm", async (req, res, next) => {
   try {
     const { userId, guardianPrivateKey, guardianWallet, guardianIndex, code } = req.body;
-    let txHash, wallet = guardianWallet;
+    let txHash;
 
     if (guardianPrivateKey) {
       // Real on-chain confirmation (a fresh, funded contract). Each guardian signs.
       txHash = await chain.confirmDeath(guardianPrivateKey);
+      if (guardianWallet)
+        await Guardian.findOneAndUpdate(
+          { userId, walletAddress: guardianWallet },
+          { confirmed: true, confirmedAt: new Date(), otpCode: null, otpExpires: null }
+        );
     } else {
-      // Demo path: verify the guardian's emailed OTP before accepting the confirmation.
+      // Demo path: verify the guardian's emailed OTP (+ security answer) before confirming.
       const guardians = await Guardian.find({ userId }).sort({ createdAt: 1 });
       const g = guardians[guardianIndex ?? -1];
       if (!g) return res.status(400).json({ error: "guardian not found" });
@@ -90,15 +95,14 @@ r.post("/confirm", async (req, res, next) => {
         if (provided !== owner.securityQuestion.answerHash)
           return res.status(401).json({ error: "Security answer is incorrect." });
       }
-      wallet = g.walletAddress;
+      // Mark THIS guardian confirmed directly — robust even when they have no wallet on file.
+      // (The old wallet-match update silently no-op'd for wallet-less guardians, so the count
+      //  never moved and the UI bounced back to "Confirm" in a loop.)
+      g.confirmed = true; g.confirmedAt = new Date(); g.otpCode = null; g.otpExpires = null;
+      await g.save();
       txHash = process.env.PROOF_TX || null;
     }
 
-    if (wallet)
-      await Guardian.findOneAndUpdate(
-        { userId, walletAddress: wallet },
-        { confirmed: true, confirmedAt: new Date(), otpCode: null, otpExpires: null }
-      );
     await TriggerEvent.create({ userId, step: "guardian_confirmed", status: "ok", txHash });
 
     // Quorum reached? on-chain state for a real key, else the count of confirmed guardians.
@@ -123,7 +127,7 @@ r.post("/confirm", async (req, res, next) => {
           await sendEmail({
             to: m.recipientEmail,
             subject: `A message from ${u?.name || "someone who loved you"}`,
-            text: `${u?.name || "Someone"} left a message for you in LastLogin. Open it: ${origin}/inbox/${userId}`,
+            text: `${u?.name || "Someone"} left this message for you:\n\n"${m.text}"\n\nHear it in their own voice — and download it — here: ${origin}/inbox/${userId}`,
           });
         } catch {}
       }
@@ -215,21 +219,25 @@ r.post("/guardian-access", async (req, res, next) => {
     if (!(await takeOtp(`ga:${userId}:${(email || "").toLowerCase()}`, code))) return res.status(401).json({ error: "Invalid or expired code." });
     const g = await Guardian.findOne({ userId, email });
     const user = await User.findById(userId).select("name estateState");
-    let items = [];
-    if (user?.estateState === "EXECUTING" && g.access?.length) {
-      const found = await VaultItem.find({ userId, type: { $in: g.access } });
-      items = found.map((i) => {
-        if (i.scheme === "server") {
-          try {
-            const raw = decrypt(i.blob);
-            let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
-            return { type: i.type, label: i.label, fields };
-          } catch { return { type: i.type, label: i.label, locked: true }; }
-        }
-        return { type: i.type, label: i.label, locked: true }; // zero-knowledge — opens with the guardian quorum (Shamir)
-      });
+    let items = [], messages = [];
+    if (user?.estateState === "EXECUTING") {
+      if (g.access?.length) {
+        const found = await VaultItem.find({ userId, type: { $in: g.access } });
+        items = found.map((i) => {
+          if (i.scheme === "server") {
+            try {
+              const raw = decrypt(i.blob);
+              let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
+              return { type: i.type, label: i.label, fields };
+            } catch { return { type: i.type, label: i.label, locked: true }; }
+          }
+          return { type: i.type, label: i.label, locked: true }; // zero-knowledge — opens with the guardian quorum (Shamir)
+        });
+      }
+      messages = (await Message.find({ userId, delivered: true })).map((m) =>
+        ({ id: m._id, recipientName: m.recipientName, text: m.text, audioUrl: m.audioUrl, language: m.language }));
     }
-    res.json({ name: g.name, access: g.access, estateState: user?.estateState, items });
+    res.json({ name: g.name, access: g.access, estateState: user?.estateState, items, messages });
   } catch (e) { next(e); }
 });
 
