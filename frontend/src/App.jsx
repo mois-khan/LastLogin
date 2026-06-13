@@ -8,6 +8,7 @@ import Guardians from "./pages/guardians/Guardians.jsx";
 import Messages from "./pages/messages/Messages.jsx";
 import FamilyDashboard from "./pages/family-dashboard/FamilyDashboard.jsx";
 import ReportPassing from "./pages/report/ReportPassing.jsx";
+import Executor from "./pages/executor/Executor.jsx";
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="vault" element={<Vault />} />
         <Route path="guardians" element={<Guardians />} />
         <Route path="messages" element={<Messages />} />
+        <Route path="executor" element={<Executor />} />
       </Route>
     </Routes>
   );

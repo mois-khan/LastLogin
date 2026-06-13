@@ -79,11 +79,14 @@ export async function verifyDeathCertificate(imageBase64, mimeType = "image/jpeg
 }
 
 /** Pre-fill a platform-specific account closure / memorialization request. */
-export async function draftClosureEmail(platform, accountType, deceasedName) {
-  const prompt = `Write a concise, respectful ${platform} account ${
-    accountType === "social" ? "memorialization" : "closure"
-  } request on behalf of the family of the deceased (${deceasedName}). Mention that a
-death certificate is attached. Plain text, no placeholders left unfilled except [DATE].`;
+export async function draftClosureEmail(platform, action = "delete", deceasedName) {
+  const ask =
+    action === "memorialize" ? "memorialize (convert into a memorial)"
+    : action === "transfer" ? "transfer ownership of"
+    : "permanently close and delete";
+  const prompt = `Write a concise, respectful email to ${platform}'s account/support team on behalf of the family,
+requesting they ${ask} the account of ${deceasedName}, who has passed away. State that a death certificate is
+attached. Warm but clear, plain text, ready to send — no unfilled placeholders except [DATE].`;
   return (await generate([{ text: prompt }])).trim();
 }
 
