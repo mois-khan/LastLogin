@@ -52,7 +52,7 @@ r.post("/otp", async (req, res, next) => {
       sent = !r2?.mocked;
     } catch (e) { sendError = e.response?.data?.message || e.message; }
     // demoCode lets the flow work on Resend's free tier (own-inbox-only). Remove in production.
-    res.json({ to: g.email, sent, sendError, demoCode: code });
+    res.json({ to: g.email, sent, sendError, demoCode: sent ? undefined : code });
   } catch (e) { next(e); }
 });
 
@@ -168,7 +168,7 @@ r.post("/recipient-otp", async (req, res, next) => {
     recipientOtps.set(`${userId}:${email.toLowerCase()}`, { code, expires: Date.now() + 10 * 60 * 1000 });
     let sent = false;
     try { const r2 = await sendEmail({ to: email, subject: "Your access code", text: `Your code to open the message left for you: ${code}` }); sent = !r2?.mocked; } catch {}
-    res.json({ sent, demoCode: code });
+    res.json({ sent, demoCode: sent ? undefined : code });
   } catch (e) { next(e); }
 });
 
