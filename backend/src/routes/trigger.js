@@ -1,6 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import fs from "fs";
+import os from "os";
+import path from "path";
 import crypto from "crypto";
 import { auth } from "../middleware/auth.js";
 import { sendEmail } from "../services/notify/email.js";
@@ -11,8 +13,11 @@ import TriggerEvent from "../models/TriggerEvent.js";
 import * as gemini from "../services/ai/gemini.js";
 import * as chain from "../services/blockchain/ethers.js";
 
-const upload = multer({ dest: "/tmp/uploads/" });
+const UPLOAD_DIR = path.join(os.tmpdir(), "lastlogin-uploads");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const upload = multer({ dest: UPLOAD_DIR });
 const r = Router();
+const recipientOtps = new Map(); // `${userId}:${email}` -> { code, expires }
 
 // Step 1: a guardian uploads a death certificate -> Gemini Vision gate
 r.post("/verify", upload.single("cert"), async (req, res, next) => {
@@ -97,6 +102,19 @@ r.post("/confirm", async (req, res, next) => {
         { userId, step: "executed", status: "ok", txHash },
         { upsert: true }
       );
+      // Notify each chosen recipient (best-effort) that a message awaits them.
+      const u = await User.findById(userId).select("name");
+      const origin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+      const recips = await Message.find({ userId, delivered: true, recipientEmail: { $nin: [null, ""] } });
+      for (const m of recips) {
+        try {
+          await sendEmail({
+            to: m.recipientEmail,
+            subject: `A message from ${u?.name || "someone who loved you"}`,
+            text: `${u?.name || "Someone"} left a message for you in LastLogin. Open it: ${origin}/inbox/${userId}`,
+          });
+        } catch {}
+      }
     }
     const confirmedCount = await Guardian.countDocuments({ userId, confirmed: true });
     res.json({ txHash, executing, confirmedCount });
@@ -134,6 +152,35 @@ r.get("/family/:userId", async (req, res, next) => {
     const events = await TriggerEvent.find({ userId: req.params.userId });
     const executedTx = events.find((e) => e.step === "executed")?.txHash;
     res.json({ name: user.name, messages, executedTx });
+  } catch (e) { next(e); }
+});
+
+// --- Recipient delivery: a chosen recipient verifies their email (OTP) to open their messages ---
+r.post("/recipient-otp", async (req, res, next) => {
+  try {
+    const { userId, email } = req.body;
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Enter a valid email." });
+    const user = await User.findById(userId);
+    if (user?.estateState !== "EXECUTING") return res.status(403).json({ error: "Not yet available." });
+    const has = await Message.exists({ userId, delivered: true, recipientEmail: email });
+    if (!has) return res.status(404).json({ error: "No messages were left for that address." });
+    const code = String(crypto.randomInt(100000, 1000000));
+    recipientOtps.set(`${userId}:${email.toLowerCase()}`, { code, expires: Date.now() + 10 * 60 * 1000 });
+    let sent = false;
+    try { const r2 = await sendEmail({ to: email, subject: "Your access code", text: `Your code to open the message left for you: ${code}` }); sent = !r2?.mocked; } catch {}
+    res.json({ sent, demoCode: code });
+  } catch (e) { next(e); }
+});
+
+r.post("/inbox", async (req, res, next) => {
+  try {
+    const { userId, email, code } = req.body;
+    const rec = recipientOtps.get(`${userId}:${(email || "").toLowerCase()}`);
+    if (!rec || rec.code !== code || rec.expires < Date.now()) return res.status(401).json({ error: "Invalid or expired code." });
+    recipientOtps.delete(`${userId}:${email.toLowerCase()}`); // single-use
+    const user = await User.findById(userId);
+    const messages = await Message.find({ userId, delivered: true, recipientEmail: email });
+    res.json({ from: user?.name, messages });
   } catch (e) { next(e); }
 });
 
