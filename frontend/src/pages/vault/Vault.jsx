@@ -1,24 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Lock, ShieldCheck, Globe, Banknote, Coins, Shield, FileText, CreditCard, ScrollText, Trash2, Send, Ban,
+  Lock, ShieldCheck, Globe, Banknote, Coins, Shield, FileText, CreditCard, ScrollText,
+  Trash2, Send, Ban, Upload, Paperclip, Image as ImageIcon, Loader2,
 } from "lucide-react";
-import { SiGmail, SiInstagram, SiFacebook, SiX, SiYoutube, SiGithub, SiReddit } from "react-icons/si";
 import { api } from "../../lib/api.js";
+import { PROVIDERS, providerIcon } from "../../lib/providers.js";
 
-// Pre-defined platforms (online accounts) — real brand marks, never emoji.
-const PLATFORMS = [
-  { key: "gmail", label: "Gmail", Icon: SiGmail },
-  { key: "instagram", label: "Instagram", Icon: SiInstagram },
-  { key: "facebook", label: "Facebook", Icon: SiFacebook },
-  { key: "x", label: "X", Icon: SiX },
-  { key: "youtube", label: "YouTube", Icon: SiYoutube },
-  { key: "github", label: "GitHub", Icon: SiGithub },
-  { key: "reddit", label: "Reddit", Icon: SiReddit },
-  { key: "other", label: "Other site", Icon: Globe },
-];
-const PLATFORM_ICON = Object.fromEntries(PLATFORMS.map((p) => [p.key, p.Icon]));
-
-// Custom asset categories + their fields.
+// Custom asset categories + their fields. Online "account" items now flow through the
+// provider picker (PROVIDERS) which auto-fills the login URL + platform; these remain
+// for everything a brand tile can't express.
 const SCHEMAS = {
   account: { label: "Online account", Icon: Globe, fields: [
     { k: "username", label: "Username or email" },
@@ -65,14 +55,17 @@ const SCHEMAS = {
     { k: "billing", label: "Billing / card" },
     { k: "notes", label: "Notes", area: true } ] },
 };
-const CATEGORIES = Object.keys(SCHEMAS);
+const CATEGORIES = Object.keys(SCHEMAS).filter((c) => c !== "account");
 const humanize = (k) => k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
-const iconFor = (i) => (i.platform && PLATFORM_ICON[i.platform]) || SCHEMAS[i.type]?.Icon || Globe;
+// A saved item's mark: brand provider first, else its category icon.
+const iconFor = (i) => (i.platform && providerIcon(i.platform)) || SCHEMAS[i.type]?.Icon || Globe;
+const isImage = (m) => /^image\//.test(m || "");
+const fmtSize = (n) => (!n ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
 export default function Vault() {
   const [items, setItems] = useState(null);
   const [type, setType] = useState("account");
-  const [platform, setPlatform] = useState("gmail");
+  const [platform, setPlatform] = useState("gmail"); // active provider key when type==="account"
   const [label, setLabel] = useState("");
   const [values, setValues] = useState({});
   const [disposition, setDisposition] = useState("transfer");
@@ -85,11 +78,16 @@ export default function Vault() {
 
   const schema = SCHEMAS[type];
   const set = (k, v) => setValues((p) => ({ ...p, [k]: v }));
-  const pickPlatform = (key) => {
-    setType("account"); setPlatform(key); setValues({});
-    if (!label.trim()) setLabel(PLATFORMS.find((p) => p.key === key)?.label || "");
+
+  // Pick a brand provider -> auto-fill login URL + platform + a default label,
+  // leaving the user to type only username + password.
+  const pickProvider = (p) => {
+    setType("account");
+    setPlatform(p.key);
+    setValues(p.loginUrl ? { url: p.loginUrl } : {});
+    setLabel(p.label === "Other site" ? "" : p.label);
   };
-  const pickCategory = (t) => { setType(t); setPlatform(""); setValues({}); };
+  const pickCategory = (t) => { setType(t); setPlatform(""); setValues({}); setLabel(""); };
 
   const add = async () => {
     if (!label.trim()) return;
@@ -114,6 +112,8 @@ export default function Vault() {
   const remove = async (id) => { setItems((a) => a.filter((x) => x.id !== id)); await api.delete(`/vault/${id}`); };
   const anchor = async () => setFp((await api.get("/vault/fingerprint")).data.fingerprint);
 
+  const activeProvider = type === "account" ? platform : null;
+
   return (
     <div className="rise">
       <h1 className="font-display text-title mb-1">Your vault</h1>
@@ -124,19 +124,23 @@ export default function Vault() {
         <div className="card lg:col-span-2 self-start">
           <h3 className="text-h mb-4">Add to vault</h3>
 
-          <label className="label">Common platforms</label>
-          <div className="grid grid-cols-4 gap-2 mb-4">
-            {PLATFORMS.map(({ key, label: pl, Icon }) => (
-              <button key={key} onClick={() => pickPlatform(key)} title={pl}
-                className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 transition ${type === "account" && platform === key ? "border-ember bg-ember/10 text-ink" : "border-line text-mist hover:border-mist/50"}`}>
-                <Icon size={18} /><span className="text-[10px] leading-tight">{pl}</span>
-              </button>
-            ))}
+          <label className="label">Pick a service — we fill in the rest</label>
+          <div className="grid grid-cols-4 gap-2 mb-4 max-h-64 overflow-y-auto pr-1 -mr-1">
+            {PROVIDERS.map((p) => {
+              const Icon = p.Icon;
+              const on = activeProvider === p.key;
+              return (
+                <button key={p.key} onClick={() => pickProvider(p)} title={p.label}
+                  className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 transition ${on ? "border-ember bg-ember/10 text-ink" : "border-line text-mist hover:border-mist/50"}`}>
+                  <Icon size={18} /><span className="text-[10px] leading-tight text-center truncate w-full">{p.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <label className="label">Or a custom category</label>
           <div className="grid grid-cols-3 gap-2 mb-4">
-            {CATEGORIES.filter((c) => c !== "account").map((t) => {
+            {CATEGORIES.map((t) => {
               const Icon = SCHEMAS[t].Icon;
               return (
                 <button key={t} onClick={() => pickCategory(t)}
@@ -237,7 +241,115 @@ export default function Vault() {
           </p>
         </div>
       </div>
+
+      {/* Files & media — the file vault now lives here, alongside the accounts. */}
+      <FileVault />
     </div>
+  );
+}
+
+// The file vault: upload, list, set each file's disposition, delete. Mirrors the
+// account items' "Visible / Transfer" vs "Deletion request" lifecycle.
+function FileVault() {
+  const [files, setFiles] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [drag, setDrag] = useState(false);
+  const inputRef = useRef(null);
+
+  const load = async () => setFiles((await api.get("/attachments")).data);
+  useEffect(() => { load().catch(() => setFiles([])); }, []);
+
+  const upload = async (fileList) => {
+    const picked = Array.from(fileList || []);
+    if (!picked.length) return;
+    setBusy(true);
+    try {
+      for (const file of picked) {
+        const fd = new FormData();
+        fd.append("file", file);
+        await api.post("/attachments", fd);
+      }
+      await load();
+    } finally { setBusy(false); if (inputRef.current) inputRef.current.value = ""; }
+  };
+
+  const flip = async (f) => {
+    const next = f.disposition === "delete" ? "transfer" : "delete";
+    setFiles((arr) => arr.map((x) => (x.id === f.id ? { ...x, disposition: next } : x)));
+    await api.patch(`/attachments/${f.id}/disposition`, { disposition: next });
+  };
+  const remove = async (id) => { setFiles((a) => a.filter((x) => x.id !== id)); await api.delete(`/attachments/${id}`); };
+
+  const onDrop = (e) => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); };
+
+  return (
+    <section className="mt-10">
+      <div className="flex items-center gap-2 mb-1">
+        <Paperclip size={18} className="text-ember" />
+        <h2 className="font-display text-h">Files &amp; media</h2>
+      </div>
+      <p className="text-mist mb-4 max-w-xl text-sm">Photos, scanned documents, a will, a video — kept encrypted and released to the guardians you choose, just like your accounts.</p>
+
+      <div className="grid lg:grid-cols-5 gap-6">
+        {/* Dropzone */}
+        <div className="lg:col-span-2 self-start">
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+            className={`card card-hover cursor-pointer text-center py-10 border-dashed ${drag ? "border-ember bg-ember/5" : ""}`}>
+            <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
+            {busy ? (
+              <Loader2 size={24} className="mx-auto mb-2 text-ember animate-spin" />
+            ) : (
+              <Upload size={24} className="mx-auto mb-2 text-mist" />
+            )}
+            <p className="text-sm text-ink font-medium">{busy ? "Uploading…" : "Drop files here, or click to choose"}</p>
+            <p className="text-xs text-mist mt-1">Images, PDFs, video — encrypted on upload.</p>
+          </div>
+        </div>
+
+        {/* File list */}
+        <div className="lg:col-span-3">
+          <h3 className="text-h mb-3">{files?.length ?? "…"} file{files?.length === 1 ? "" : "s"}</h3>
+
+          {files === null ? (
+            <div className="space-y-3">{[0, 1].map((i) => <div key={i} className="skeleton h-14" />)}</div>
+          ) : files.length === 0 ? (
+            <div className="card text-center py-10 text-mist">
+              <Paperclip size={24} className="mx-auto mb-2 text-mist" />
+              No files yet. Add a photo, a scan, or a video on the left.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {files.map((f) => {
+                const del = f.disposition === "delete";
+                const Glyph = isImage(f.mimeType) ? ImageIcon : Paperclip;
+                return (
+                  <div key={f.id} className="card card-hover">
+                    <div className="flex items-center gap-3">
+                      <span className={`grid place-items-center h-9 w-9 rounded-xl shrink-0 ${del ? "bg-mist/10 text-mist" : "bg-sage/12 text-sage-600"}`}><Glyph size={17} /></span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-medium truncate">{f.name}</span>
+                        <span className="block text-xs text-mist">{[f.mimeType, fmtSize(f.size)].filter(Boolean).join(" · ")}</span>
+                      </span>
+                      {del
+                        ? <span className="pill bg-mist/10 text-mist border border-line"><Ban size={12} /> Deletion request</span>
+                        : <span className="pill bg-sage/12 text-sage-600"><Send size={12} /> Visible / Transfer</span>}
+                      <button className="text-mist hover:text-ember p-1.5 rounded-lg hover:bg-line/40 transition" title="Remove" onClick={() => remove(f.id)}><Trash2 size={15} /></button>
+                    </div>
+                    <div className="mt-3 ml-12">
+                      <DispositionSelector value={f.disposition} onChange={() => flip(f)} small />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

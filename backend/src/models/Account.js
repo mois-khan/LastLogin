@@ -11,8 +11,10 @@ const accountSchema = new mongoose.Schema(
     action: { type: String, enum: ["delete", "memorialize", "transfer"], default: "delete" },
     contactEmail: String, // where the request is sent (a test inbox for the demo)
     draft: String, // Gemini-drafted request body
-    status: { type: String, enum: ["pending", "sent"], default: "pending" },
+    status: { type: String, enum: ["pending", "sent", "failed"], default: "pending" },
     sentAt: Date,
+    // proof the request actually went out — the provider's HTTP status (SendGrid 202 = accepted)
+    lastSend: { code: Number, provider: String, to: String, at: Date, error: String },
   },
   { timestamps: true }
 );

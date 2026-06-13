@@ -37,7 +37,7 @@ r.post("/voice/clone", auth, upload.single("sample"), async (req, res, next) => 
 // Generate + store a final message in the cloned voice + family's language
 r.post("/messages", auth, async (req, res, next) => {
   try {
-    const { recipientName, recipientEmail, text, language, deliverOn, deliverAt } = req.body;
+    const { recipientName, recipients, scope, text, language, deliverOn, deliverAt } = req.body;
     const user = await User.findById(req.user.id);
     if (!user.voiceId) return res.status(400).json({ error: "clone your voice first" });
 
@@ -45,14 +45,17 @@ r.post("/messages", auth, async (req, res, next) => {
       text, targetLang: language || "hi-IN", voiceId: user.voiceId,
     });
 
+    // global = everyone (memorial + all guardians); assigned = only the listed emails.
+    const finalScope = scope === "global" ? "global" : "assigned";
+    const recips = Array.isArray(recipients) ? recipients.map((e) => String(e).trim()).filter(Boolean) : [];
     // For the hackathon, store the audio as a base64 data URL (swap for GridFS/S3 later).
     const audioUrl = `data:audio/mpeg;base64,${audio.toString("base64")}`;
     const msg = await Message.create({
-      userId: req.user.id, recipientName, recipientEmail,
+      userId: req.user.id, recipientName, scope: finalScope, recipients: recips, recipientEmail: recips[0] || "",
       text: translatedText, language: targetLang, audioUrl,
       deliverOn: deliverOn || "death", deliverAt,
     });
-    res.json({ id: msg._id, translatedText, audioUrl, language: targetLang });
+    res.json({ id: msg._id, translatedText, audioUrl, language: targetLang, scope: finalScope, recipients: recips });
   } catch (e) { next(e); }
 });
 

@@ -11,8 +11,10 @@ const guardianSchema = new mongoose.Schema(
     // Per-guardian, per-asset grants — completely isolated between guardians.
     assetAccess: { type: [mongoose.Schema.Types.ObjectId], ref: "VaultItem", default: [] },
     fileAccess: { type: [mongoose.Schema.Types.ObjectId], ref: "Attachment", default: [] },
-    confirmed: { type: Boolean, default: false },
+    confirmed: { type: Boolean, default: false }, // uploaded a verified death certificate
     confirmedAt: Date,
+    certVerified: { type: Boolean, default: false },
+    certName: String,
     otpCode: String, // emailed verification code (single-use)
     otpExpires: Date,
   },

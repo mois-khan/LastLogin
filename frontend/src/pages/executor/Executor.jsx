@@ -5,13 +5,41 @@ import { useAuth } from "../../context/AuthContext.jsx";
 
 const PRESETS = [
   { platform: "Google", domain: "google.com", category: "email" },
+  { platform: "Outlook", domain: "outlook.com", category: "email" },
   { platform: "Instagram", domain: "instagram.com", category: "social" },
   { platform: "Facebook", domain: "facebook.com", category: "social" },
   { platform: "X", domain: "x.com", category: "social" },
   { platform: "LinkedIn", domain: "linkedin.com", category: "social" },
   { platform: "Netflix", domain: "netflix.com", category: "subscription" },
+  { platform: "Spotify", domain: "spotify.com", category: "subscription" },
+  { platform: "Amazon", domain: "amazon.com", category: "shopping" },
+  { platform: "Apple", domain: "apple.com", category: "account" },
+  { platform: "PayPal", domain: "paypal.com", category: "finance" },
+  { platform: "Dropbox", domain: "dropbox.com", category: "storage" },
 ];
 const ACTION_LABEL = { delete: "Delete", memorialize: "Memorialize", transfer: "Transfer" };
+
+// Build a human, brand-coloured send status from the backend's lastSend proof.
+function sendStatus(a) {
+  const ls = a.lastSend;
+  if (a.status === "failed" || (ls && ls.error)) {
+    return { tone: "ember", line: ls?.error || "Send failed", meta: ls };
+  }
+  if (a.status === "sent" && ls) {
+    if (ls.code === 202) return { tone: "sage", line: "Sent — SendGrid accepted (202)", meta: ls };
+    if (ls.code === 0 || ls.provider === "mock") return { tone: "mist", line: "Mock send (no SENDGRID key set)", meta: ls };
+    return { tone: "sage", line: `Sent${ls.provider ? ` via ${ls.provider}` : ""}`, meta: ls };
+  }
+  return null;
+}
+
+const TONE = { sage: "text-sage-600", mist: "text-mist", ember: "text-ember" };
+
+function fmtTime(at) {
+  if (!at) return null;
+  const d = new Date(at);
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleString();
+}
 
 function Logo({ domain, size = 32 }) {
   const [src, setSrc] = useState(`https://logo.clearbit.com/${domain}`);
@@ -45,11 +73,11 @@ export default function Executor() {
   const send = async (id) => {
     setB(id, "sending");
     try {
-      const { data } = await api.post(`/accounts/${id}/send`);
-      setNotice((n) => ({ ...n, [id]: data.ok ? { ok: true, msg: `Request sent to ${data.sentTo}` } : { ok: false, msg: data.error } }));
+      await api.post(`/accounts/${id}/send`);
+      // Reload so the persisted lastSend proof (code/provider/to/at/error) drives the UI.
       await load();
     } catch (e) {
-      setNotice((n) => ({ ...n, [id]: { ok: false, msg: e.response?.data?.error || "Send failed" } }));
+      setNotice((n) => ({ ...n, [id]: e.response?.data?.error || "Send failed" }));
     } finally { setB(id, null); }
   };
 
@@ -96,7 +124,10 @@ export default function Executor() {
             <div className="card text-center py-12 text-mist text-sm">No accounts yet. Add the services you use on the left.</div>
           ) : (
             <div className="space-y-3">
-              {accounts.map((a) => (
+              {accounts.map((a) => {
+                const st = sendStatus(a);
+                const sent = a.status === "sent" && st?.tone !== "ember";
+                return (
                 <div key={a._id} className="card card-hover">
                   <div className="flex items-center gap-3">
                     <Logo domain={a.domain} />
@@ -107,7 +138,7 @@ export default function Executor() {
                     <span className={`pill ${a.action === "delete" ? "bg-ember/12 text-ember" : a.action === "memorialize" ? "bg-sage/15 text-sage-600" : "bg-paper text-graphite border border-line"}`}>
                       {ACTION_LABEL[a.action]}
                     </span>
-                    {a.status === "sent" ? (
+                    {sent ? (
                       <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Sent</span>
                     ) : (
                       <div className="flex items-center gap-1.5">
@@ -115,7 +146,7 @@ export default function Executor() {
                           {busy[a._id] === "drafting" ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} Draft
                         </button>
                         <button className="btn-primary btn-sm" disabled={!!busy[a._id]} onClick={() => send(a._id)}>
-                          {busy[a._id] === "sending" ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Send
+                          {busy[a._id] === "sending" ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {st?.tone === "ember" ? "Retry" : "Send"}
                         </button>
                       </div>
                     )}
@@ -124,14 +155,26 @@ export default function Executor() {
                   {drafts[a._id] && (
                     <pre className="mt-4 pt-4 border-t border-line text-xs text-graphite whitespace-pre-wrap font-body leading-relaxed rise">{drafts[a._id]}</pre>
                   )}
+                  {st && (
+                    <div className="mt-3 rise">
+                      <p className={`text-xs font-medium ${TONE[st.tone]}`}>{st.line}</p>
+                      {st.meta && (st.meta.to || st.meta.provider || st.meta.at) && (
+                        <p className="text-xs text-mist mono mt-0.5">
+                          {[st.meta.provider, st.meta.to, fmtTime(st.meta.at)].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {notice[a._id] && (
-                    <p className={`mt-3 text-xs ${notice[a._id].ok ? "text-sage-600" : "text-ember"}`}>{notice[a._id].msg}</p>
+                    <p className="mt-3 text-xs text-ember">{notice[a._id]}</p>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
           <p className="mt-4 text-xs text-mist">Requests are sent to your test inbox for the demo — never to real companies.</p>
+          <p className="mt-1.5 text-xs text-mist">A 202 means SendGrid accepted it for delivery — see the SendGrid Activity feed (sendgrid.com &rarr; Activity) for the delivery receipt.</p>
         </div>
       </div>
     </div>

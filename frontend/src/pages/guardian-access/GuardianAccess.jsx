@@ -1,100 +1,362 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Mail, Loader2, ShieldCheck, ArrowRight, ArrowLeft } from "lucide-react";
+import { Mail, Loader2, ShieldCheck, ArrowRight, ArrowLeft, Upload } from "lucide-react";
 import { api } from "../../lib/api.js";
 import Candle from "../../components/ui/Candle.jsx";
 import GuardianGrantView from "../../components/GuardianGrantView.jsx";
 
-// Universal guardian hub. A guardian enters their OWN email — no userId needed — and
-// re-verifies with a fresh code every visit. They see only the estates they guard, and
-// for each, only what was assigned to them.
+// The universal guardian hub at /access. A guardian who is NOT logged in finds an estate by
+// the deceased's email or phone, proves they're a named guardian with a one-time code, then
+// either receives what was left in their care (once 2 guardians confirm) or reports the
+// passing by uploading a death certificate — which counts as their own confirmation.
+//
+// Stateless on purpose: everything lives in React state and is lost on reload, so each visit
+// re-verifies. We never show other guardians' names or emails — only counts.
+
+// A calm sage progress bar. Reads e.g. "1 of 3 confirmed · 2 needed".
+function StatusBar({ confirmed = 0, total = 0, threshold = 2 }) {
+  const pct = total ? Math.min(100, Math.round((confirmed / total) * 100)) : 0;
+  return (
+    <div className="card !py-4 mb-6">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm text-graphite">
+          <span className="mono text-ink">{confirmed}</span> of{" "}
+          <span className="mono text-ink">{total}</span> confirmed
+        </span>
+        <span className="pill bg-sage/12 text-sage-600">{threshold} needed</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-line overflow-hidden">
+        <div
+          className="h-full rounded-full bg-sage-600 transition-[width] duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function GuardianAccess() {
-  const nav = useNavigate();
-  const [email, setEmail] = useState("");
-  const [step, setStep] = useState("email"); // email | code | done
-  const [otpInfo, setOtpInfo] = useState(null);
+  const [step, setStep] = useState("identify"); // identify | yourEmail | code | portal
+  const [identifier, setIdentifier] = useState(""); // deceased's email or phone
+  const [estate, setEstate] = useState(null); // { userId, ownerName, estateState, confirmedGuardians, threshold, totalGuardians }
+  const [guardianEmail, setGuardianEmail] = useState(""); // the guardian's OWN email
+  const [otpInfo, setOtpInfo] = useState(null); // { name, sent, demoCode }
   const [code, setCode] = useState("");
-  const [estates, setEstates] = useState([]);
+  const [state, setState] = useState(null); // session: { token, guardianName, ownerName, estateState, youConfirmed, executing, confirmedGuardians, threshold, totalGuardians, items?, files?, messages? }
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [verifying, setVerifying] = useState(false); // cert verification in flight
+  const [certReason, setCertReason] = useState(""); // last rejection reason
 
-  const start = async (e) => {
-    e?.preventDefault(); setErr(""); setBusy(true);
-    try { setOtpInfo((await api.post("/trigger/guardian-start", { email: email.trim() })).data); setStep("code"); }
-    catch (e2) { setErr(e2.response?.data?.error || "Couldn't send a code."); } finally { setBusy(false); }
-  };
-  const verify = async (e) => {
-    e?.preventDefault(); setErr(""); setBusy(true);
-    try { setEstates((await api.post("/trigger/guardian-portal", { email: email.trim(), code: code.trim() })).data.estates); setStep("done"); }
-    catch (e2) { setErr(e2.response?.data?.error || "Invalid code."); } finally { setBusy(false); }
-  };
-  const reset = () => { setStep("email"); setCode(""); setEstates([]); setOtpInfo(null); setErr(""); };
+  // Counts shown in the status bar prefer the live session, falling back to the lookup.
+  const confirmed = state?.confirmedGuardians ?? estate?.confirmedGuardians ?? 0;
+  const total = state?.totalGuardians ?? estate?.totalGuardians ?? 0;
+  const threshold = state?.threshold ?? estate?.threshold ?? 2;
+  const ownerName = state?.ownerName || estate?.ownerName || "this person";
 
-  if (step === "done") {
+  const reset = () => {
+    setStep("identify");
+    setIdentifier("");
+    setEstate(null);
+    setGuardianEmail("");
+    setOtpInfo(null);
+    setCode("");
+    setState(null);
+    setErr("");
+    setBusy(false);
+    setVerifying(false);
+    setCertReason("");
+  };
+
+  // STEP 1 — find the estate by the deceased's email or phone.
+  const lookupEstate = async (e) => {
+    e?.preventDefault();
+    setErr(""); setBusy(true);
+    try {
+      const { data } = await api.post("/trigger/lookup-estate", { identifier: identifier.trim() });
+      setEstate(data);
+      setStep("yourEmail");
+    } catch (e2) {
+      setErr(e2.response?.data?.error || "No estate found for that email or phone.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // STEP 2 — confirm this visitor is a named guardian, send them a code.
+  const sendOtp = async (e) => {
+    e?.preventDefault();
+    setErr(""); setBusy(true);
+    try {
+      const { data } = await api.post("/trigger/guardian-otp", {
+        userId: estate.userId,
+        email: guardianEmail.trim(),
+      });
+      setOtpInfo(data);
+      setStep("code");
+    } catch (e2) {
+      setErr(e2.response?.data?.error || "That email isn't a guardian for this person.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // STEP 3 — exchange the code for a session + the current estate state.
+  const verifyCode = async (e) => {
+    e?.preventDefault();
+    setErr(""); setBusy(true);
+    try {
+      const { data } = await api.post("/trigger/guardian-session", {
+        userId: estate.userId,
+        email: guardianEmail.trim(),
+        code: code.trim(),
+      });
+      setState(data);
+      setStep("portal");
+    } catch (e2) {
+      setErr(e2.response?.data?.error || "Invalid or expired code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // PORTAL — upload a death certificate. This counts as this guardian's confirmation.
+  // The session token MUST travel in the FormData (the api interceptor overwrites the
+  // Authorization header with the owner's token, so a header alone won't reach the route).
+  const uploadCert = async (file) => {
+    if (!file) return;
+    setErr(""); setCertReason(""); setVerifying(true);
+    try {
+      const fd = new FormData();
+      fd.append("cert", file);
+      fd.append("token", state.token);
+      const { data } = await api.post("/trigger/guardian-cert", fd);
+      if (!data.certValid) {
+        setCertReason(data.reason || "We couldn't read that as a valid certificate. Try a clearer copy.");
+        return;
+      }
+      // Merge the fresh counts/state, keeping the token we already hold.
+      setState((s) => ({ ...s, ...data, youConfirmed: true }));
+    } catch (e2) {
+      setErr(e2.response?.data?.error || "Upload failed. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // PORTAL — re-poll the estate without re-uploading (flips to grants once executing).
+  const checkAgain = async () => {
+    setErr(""); setBusy(true);
+    try {
+      const { data } = await api.post("/trigger/guardian-state", { token: state.token });
+      setState((s) => ({ ...s, ...data }));
+    } catch (e2) {
+      setErr(e2.response?.data?.error || "Couldn't refresh just now.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---- PORTAL ----
+  if (step === "portal" && state) {
+    const executing = state.executing === true;
+    const youConfirmed = state.youConfirmed === true;
     return (
       <div className="min-h-screen">
         <div className="mx-auto max-w-2xl px-6 py-16">
-          <p className="text-xs uppercase tracking-[0.2em] text-mist">Guardian access</p>
-          <h1 className="font-display text-title mt-2 mb-1">What was left in your care</h1>
-          <p className="text-mist mb-8">Verified as {email}.</p>
+          <button
+            onClick={reset}
+            className="text-sm text-mist hover:text-ink flex items-center gap-1.5 mb-6"
+          >
+            <ArrowLeft size={14} /> Lock and exit
+          </button>
 
-          {estates.length === 0 ? (
-            <div className="card text-center py-12 text-mist"><ShieldCheck size={26} className="mx-auto mb-2 text-sage-600" /> Nothing is shared with you yet.</div>
-          ) : estates.map((es) => {
-            const executing = es.estateState === "EXECUTING";
-            return (
-              <section key={es.userId} className="mb-10 pb-10 border-b border-line last:border-0 last:pb-0">
-                <div className="flex items-center gap-2.5 mb-4">
-                  <Candle size={26} still={executing} />
-                  <h2 className="font-display text-h flex-1">{es.ownerName}</h2>
-                  {!executing && <span className="pill bg-sage/12 text-sage-600">still with us</span>}
+          <div className="flex items-center gap-3 mb-5">
+            <Candle size={30} still={executing} />
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-mist">Guardian access</p>
+              <h1 className="font-display text-title">{ownerName}</h1>
+            </div>
+          </div>
+
+          <StatusBar confirmed={confirmed} total={total} threshold={threshold} />
+
+          {executing ? (
+            <GuardianGrantView
+              name={state.guardianName}
+              messages={state.messages}
+              items={state.items}
+              files={state.files}
+            />
+          ) : youConfirmed ? (
+            // This guardian has already confirmed (via prior cert or upload this visit).
+            <div className="card rise">
+              <div className="flex items-center gap-2 mb-2">
+                <ShieldCheck size={18} className="text-sage-600" />
+                <h2 className="font-display text-h">Your confirmation is in</h2>
+              </div>
+              <p className="text-sm text-graphite leading-relaxed mb-5">
+                Verified. We're waiting for one more guardian to agree — they've been notified
+                by email. Nothing is released until {threshold} guardians confirm. You can
+                check back here at any time.
+              </p>
+              <button className="btn-secondary btn-sm" onClick={checkAgain} disabled={busy}>
+                {busy ? <Loader2 size={14} className="animate-spin" /> : "Check again"}
+              </button>
+              {err && <p className="text-sm text-ember mt-3">{err}</p>}
+            </div>
+          ) : (
+            // Report a passing — upload a death certificate to cast this guardian's confirmation.
+            <div className="card rise">
+              <h2 className="font-display text-h mb-2">Report a passing</h2>
+              <p className="text-sm text-graphite leading-relaxed mb-2">
+                Nothing in {ownerName}'s estate is released until {threshold} guardians confirm.
+                Uploading a death certificate counts as your confirmation — it's reviewed
+                privately, and never shown to anyone.
+              </p>
+              <p className="text-xs text-mist mb-5">Accepted: a photo or PDF of the certificate.</p>
+
+              {verifying ? (
+                <div className="flex items-center gap-2 text-sm text-graphite py-2">
+                  <Loader2 size={16} className="animate-spin text-ember" />
+                  Verifying with Gemini Vision…
                 </div>
-                {executing ? (
-                  <GuardianGrantView name={es.guardianName} messages={es.messages} items={es.items} files={es.files} />
-                ) : (
-                  <div className="card">
-                    <p className="text-sm text-graphite mb-3">Nothing is released while {es.ownerName} is alive. If they've passed, you can begin the verified handover.</p>
-                    <button className="btn-secondary btn-sm" onClick={() => nav(`/report/${es.userId}`)}>Report a passing <ArrowRight size={14} /></button>
-                  </div>
-                )}
-              </section>
-            );
-          })}
+              ) : (
+                <label className="btn-primary btn-sm cursor-pointer inline-flex">
+                  <Upload size={16} /> Upload certificate
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => uploadCert(e.target.files?.[0])}
+                  />
+                </label>
+              )}
 
-          <button onClick={reset} className="text-sm text-mist hover:text-ink flex items-center gap-1.5"><ArrowLeft size={14} /> Lock and exit</button>
+              {certReason && (
+                <p className="text-sm text-ember mt-3">{certReason} Please try again.</p>
+              )}
+              {err && <p className="text-sm text-ember mt-3">{err}</p>}
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
+  // ---- IDENTIFY / YOUR EMAIL / CODE (centered card) ----
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="card max-w-sm w-full rise">
-        <Candle size={48} />
-        <h1 className="font-display text-h mt-4 mb-1">Guardian access</h1>
-        <p className="text-sm text-mist mb-6">Enter the email you were entrusted with. We send a one-time code each time you visit.</p>
-        {step === "email" ? (
-          <form onSubmit={start}>
-            <label className="label">Your email</label>
-            <input className="field mb-4" type="email" value={email} autoFocus placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} />
-            <button className="btn-primary w-full" disabled={busy || !email.trim()}>
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <>Send me a code <ArrowRight size={16} /></>}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verify}>
-            <p className="text-xs text-mist flex items-center gap-1.5 mb-2"><Mail size={13} /> Code sent to {email}</p>
-            {otpInfo?.demoCode && <p className="text-xs text-mist mb-2">Demo code: <span className="mono text-ink">{otpInfo.demoCode}</span></p>}
-            <input className="field mb-4 mono tracking-[0.3em]" placeholder="000000" maxLength={6} value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
-            <button className="btn-primary w-full" disabled={busy || code.length < 6}>
-              {busy ? <Loader2 size={16} className="animate-spin" /> : "Enter"}
-            </button>
-            <button type="button" onClick={reset} className="w-full mt-2 text-xs text-mist hover:text-ink">Use a different email</button>
-          </form>
+      <div className="w-full max-w-sm rise">
+        {/* Status bar appears as soon as we've found an estate. */}
+        {estate && step !== "identify" && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2.5 mb-3">
+              <Candle size={26} />
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-mist">Estate of</p>
+                <p className="font-display text-h leading-tight">{ownerName}</p>
+              </div>
+            </div>
+            <StatusBar confirmed={confirmed} total={total} threshold={threshold} />
+          </div>
         )}
-        {err && <p className="text-sm text-ember mt-3">{err}</p>}
-        <p className="mt-5 flex items-center gap-2 text-xs text-mist"><ShieldCheck size={14} className="text-sage-600" /> You only ever see what was assigned to you.</p>
+
+        <div className="card">
+          {step === "identify" && (
+            <>
+              <Candle size={48} />
+              <h1 className="font-display text-h mt-4 mb-1">Guardian access</h1>
+              <p className="text-sm text-mist mb-6">
+                Enter the email or phone of the person whose estate you help protect. You'll
+                verify it's you before anything is shown.
+              </p>
+              <form onSubmit={lookupEstate}>
+                <label className="label">Their email or phone</label>
+                <input
+                  className="field mb-4"
+                  value={identifier}
+                  autoFocus
+                  placeholder="name@example.com"
+                  onChange={(e) => setIdentifier(e.target.value)}
+                />
+                <button className="btn-primary w-full" disabled={busy || !identifier.trim()}>
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <>Find the estate <ArrowRight size={16} /></>}
+                </button>
+              </form>
+            </>
+          )}
+
+          {step === "yourEmail" && (
+            <>
+              <h1 className="font-display text-h mb-1">Verify it's you</h1>
+              <p className="text-sm text-mist mb-6">
+                Enter the email you were entrusted with as a guardian for {ownerName}.
+              </p>
+              <form onSubmit={sendOtp}>
+                <label className="label">Your email</label>
+                <input
+                  className="field mb-4"
+                  type="email"
+                  value={guardianEmail}
+                  autoFocus
+                  placeholder="you@example.com"
+                  onChange={(e) => setGuardianEmail(e.target.value)}
+                />
+                <button className="btn-primary w-full" disabled={busy || !guardianEmail.trim()}>
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <>Send me a code <ArrowRight size={16} /></>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStep("identify"); setErr(""); }}
+                  className="w-full mt-2 text-xs text-mist hover:text-ink flex items-center justify-center gap-1.5"
+                >
+                  <ArrowLeft size={13} /> Different person
+                </button>
+              </form>
+            </>
+          )}
+
+          {step === "code" && (
+            <>
+              <h1 className="font-display text-h mb-1">Enter your code</h1>
+              <p className="text-xs text-mist flex items-center gap-1.5 mb-2">
+                <Mail size={13} /> Sent to {guardianEmail}
+              </p>
+              {otpInfo?.demoCode && (
+                <p className="text-xs text-mist mb-3">
+                  Demo code: <span className="mono text-ink">{otpInfo.demoCode}</span>
+                </p>
+              )}
+              <form onSubmit={verifyCode}>
+                <input
+                  className="field mb-4 mono tracking-[0.3em]"
+                  placeholder="000000"
+                  maxLength={6}
+                  inputMode="numeric"
+                  autoFocus
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                />
+                <button className="btn-primary w-full" disabled={busy || code.length < 6}>
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : "Enter"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStep("yourEmail"); setCode(""); setErr(""); }}
+                  className="w-full mt-2 text-xs text-mist hover:text-ink flex items-center justify-center gap-1.5"
+                >
+                  <ArrowLeft size={13} /> Use a different email
+                </button>
+              </form>
+            </>
+          )}
+
+          {err && <p className="text-sm text-ember mt-3">{err}</p>}
+
+          <p className="mt-5 flex items-center gap-2 text-xs text-mist">
+            <ShieldCheck size={14} className="text-sage-600" /> You only ever see what was left in your care.
+          </p>
+        </div>
       </div>
     </div>
   );

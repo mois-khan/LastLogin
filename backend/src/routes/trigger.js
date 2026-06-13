@@ -16,6 +16,7 @@ import TriggerEvent from "../models/TriggerEvent.js";
 import Otp from "../models/Otp.js";
 import * as gemini from "../services/ai/gemini.js";
 import * as chain from "../services/blockchain/ethers.js";
+import jwt from "jsonwebtoken";
 
 const UPLOAD_DIR = path.join(os.tmpdir(), "lastlogin-uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -51,9 +52,40 @@ async function guardianGrants(g, user) {
   });
   const gf = await Attachment.find({ _id: { $in: g.fileAccess || [] }, userId: g.userId, disposition: "transfer" });
   const files = gf.map((f) => ({ id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, dataUrl: f.dataUrl }));
-  const messages = (await Message.find({ userId: g.userId, delivered: true })).map((m) =>
-    ({ id: m._id, recipientName: m.recipientName, text: m.text, audioUrl: m.audioUrl, language: m.language }));
+  // A guardian sees a message if it's global, or if their email is one of its recipients.
+  const ge = String(g.email || "").toLowerCase();
+  const messages = (await Message.find({ userId: g.userId, delivered: true }))
+    .filter((m) => m.scope === "global" || msgRecipients(m).includes(ge))
+    .map((m) => ({ id: m._id, recipientName: m.recipientName, text: m.text, audioUrl: m.audioUrl, language: m.language, scope: m.scope }));
   return { items, files, messages };
+}
+
+// Recipients of a message (new array; falls back to the legacy single field), lowercased.
+function msgRecipients(m) {
+  return (m.recipients?.length ? m.recipients : (m.recipientEmail ? [m.recipientEmail] : [])).map((e) => String(e).toLowerCase());
+}
+
+async function guardianCounts(userId) {
+  const [totalGuardians, confirmedGuardians] = await Promise.all([
+    Guardian.countDocuments({ userId }),
+    Guardian.countDocuments({ userId, confirmed: true }),
+  ]);
+  return { confirmedGuardians, threshold: 2, totalGuardians };
+}
+
+// Short-lived guardian session, issued after email+OTP. Held in browser memory only, so a
+// fresh visit always re-verifies. Carries only this guardian's identity — never the others.
+function guardianAuth(req, res, next) {
+  const h = req.headers.authorization || "";
+  // Prefer the body token: the axios interceptor stamps the logged-in OWNER's token onto the
+  // Authorization header, which would otherwise clobber the guardian's session in the same browser.
+  const tok = req.body?.token || (h.startsWith("Bearer ") ? h.slice(7) : null);
+  if (!tok) return res.status(401).json({ error: "Verify your email first." });
+  try {
+    const p = jwt.verify(tok, process.env.JWT_SECRET);
+    if (p.kind !== "guardian") throw new Error("bad kind");
+    req.guardian = p; next();
+  } catch { return res.status(401).json({ error: "Your session expired — verify again." }); }
 }
 
 // Step 1: a guardian uploads a death certificate -> Gemini Vision gate
@@ -189,7 +221,7 @@ r.get("/family/:userId", async (req, res, next) => {
     const user = await User.findById(req.params.userId);
     if (user?.estateState !== "EXECUTING")
       return res.status(403).json({ error: "estate not yet active" });
-    const messages = await Message.find({ userId: req.params.userId, delivered: true });
+    const messages = await Message.find({ userId: req.params.userId, delivered: true, scope: "global" });
     const events = await TriggerEvent.find({ userId: req.params.userId });
     const executedTx = events.find((e) => e.step === "executed")?.txHash;
     res.json({ name: user.name, messages, executedTx });
@@ -203,7 +235,8 @@ r.post("/recipient-otp", async (req, res, next) => {
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Enter a valid email." });
     const user = await User.findById(userId);
     if (user?.estateState !== "EXECUTING") return res.status(403).json({ error: "Not yet available." });
-    const has = await Message.exists({ userId, delivered: true, recipientEmail: email });
+    const e = String(email).toLowerCase();
+    const has = (await Message.find({ userId, delivered: true })).some((m) => m.scope === "global" || msgRecipients(m).includes(e));
     if (!has) return res.status(404).json({ error: "No messages were left for that address." });
     const code = String(crypto.randomInt(100000, 1000000));
     await setOtp(`rcp:${userId}:${email.toLowerCase()}`, code);
@@ -218,7 +251,9 @@ r.post("/inbox", async (req, res, next) => {
     const { userId, email, code } = req.body;
     if (!(await takeOtp(`rcp:${userId}:${(email || "").toLowerCase()}`, code))) return res.status(401).json({ error: "Invalid or expired code." });
     const user = await User.findById(userId);
-    const messages = await Message.find({ userId, delivered: true, recipientEmail: email });
+    const e = String(email || "").toLowerCase();
+    const messages = (await Message.find({ userId, delivered: true }))
+      .filter((m) => m.scope === "global" || msgRecipients(m).includes(e));
     res.json({ from: user?.name, messages });
   } catch (e) { next(e); }
 });
@@ -249,34 +284,109 @@ r.post("/guardian-access", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// --- Universal guardian entry: a guardian identifies by their OWN email (no userId in the URL). ---
-// Re-verified with a fresh one-time code on every visit.
-r.post("/guardian-start", async (req, res, next) => {
+// --- The /access flow: identify the estate, then verify yourself, then (if needed) report a passing. ---
+
+// Step 1: find the estate by the person's email OR phone (no userId needed in the URL).
+// Returns only the owner's name + the live confirmation count — never the guardian roster.
+r.post("/lookup-estate", async (req, res, next) => {
   try {
-    const email = String(req.body.email || "").trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Enter a valid email." });
-    const guardians = await Guardian.find({ email: new RegExp(`^${escRe(email)}$`, "i") });
-    if (!guardians.length) return res.status(404).json({ error: "We couldn't find you listed as a guardian for anyone." });
-    const code = String(crypto.randomInt(100000, 1000000));
-    await setOtp(`gae:${email}`, code);
-    let sent = false;
-    try { const r2 = await sendEmail({ to: email, subject: "Your LastLogin access code", text: `Your one-time code to open what was left in your care: ${code}` }); sent = !r2?.mocked; } catch {}
-    res.json({ sent, demoCode: sent ? undefined : code });
+    const id = String(req.body.identifier || "").trim();
+    if (!id) return res.status(400).json({ error: "Enter the person's email or phone." });
+    let user;
+    if (id.includes("@")) {
+      user = await User.findOne({ email: id.toLowerCase() }).select("name estateState");
+    } else {
+      const d = id.replace(/\D/g, "");
+      const candidates = await User.find({ phone: { $nin: [null, ""] } }).select("name estateState phone");
+      user = candidates.find((u) => String(u.phone).replace(/\D/g, "") === d) || null;
+    }
+    if (!user) return res.status(404).json({ error: "No estate found for that email or phone." });
+    res.json({ userId: user._id, ownerName: user.name, estateState: user.estateState, ...(await guardianCounts(user._id)) });
   } catch (e) { next(e); }
 });
 
-r.post("/guardian-portal", async (req, res, next) => {
+// Step 3: verify the guardian's emailed OTP -> a short-lived session token. (Step 2 reuses /guardian-otp.)
+r.post("/guardian-session", async (req, res, next) => {
   try {
-    const email = String(req.body.email || "").trim().toLowerCase();
-    if (!(await takeOtp(`gae:${email}`, String(req.body.code || "").trim()))) return res.status(401).json({ error: "Invalid or expired code." });
-    const guardians = await Guardian.find({ email: new RegExp(`^${escRe(email)}$`, "i") });
-    const estates = [];
-    for (const g of guardians) {
-      const user = await User.findById(g.userId).select("name estateState");
-      if (!user) continue;
-      estates.push({ userId: g.userId, ownerName: user.name, estateState: user.estateState, guardianName: g.name, ...(await guardianGrants(g, user)) });
+    const { userId, email, code } = req.body;
+    if (!(await takeOtp(`ga:${userId}:${String(email || "").toLowerCase()}`, String(code || "").trim())))
+      return res.status(401).json({ error: "Invalid or expired code." });
+    const g = await Guardian.findOne({ userId, email: new RegExp(`^${escRe(String(email).toLowerCase())}$`, "i") });
+    if (!g) return res.status(404).json({ error: "You're not a guardian for this person." });
+    const user = await User.findById(userId).select("name estateState");
+    const token = jwt.sign({ kind: "guardian", gid: String(g._id), userId: String(userId), email: g.email }, process.env.JWT_SECRET, { expiresIn: "30m" });
+    const executing = user?.estateState === "EXECUTING";
+    res.json({
+      token, guardianName: g.name, ownerName: user?.name, estateState: user?.estateState,
+      youConfirmed: !!g.confirmed, executing, ...(await guardianCounts(userId)),
+      ...(executing ? await guardianGrants(g, user) : {}),
+    });
+  } catch (e) { next(e); }
+});
+
+// A verified guardian uploads a death certificate. Their cert IS their confirmation. At 2 of 3
+// the estate executes; on every upload the OTHER guardians are emailed to come and agree.
+// multer FIRST so the multipart body (incl. the session token) is parsed before guardianAuth reads it.
+r.post("/guardian-cert", upload.single("cert"), guardianAuth, async (req, res, next) => {
+  try {
+    const { userId, gid } = req.guardian;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "estate not found" });
+    if (!req.file) return res.status(400).json({ error: "No certificate uploaded." });
+    const b64 = fs.readFileSync(req.file.path).toString("base64");
+    const result = await gemini.verifyDeathCertificate(b64, req.file.mimetype);
+    const fileName = req.file.originalname;
+    fs.unlink(req.file.path, () => {});
+    await TriggerEvent.create({ userId, step: "cert_verified", status: result.looksValid ? "pass" : "fail", detail: result });
+    if (!result.looksValid)
+      return res.json({ certValid: false, reason: result.reason, ...(await guardianCounts(userId)) });
+
+    await Guardian.findByIdAndUpdate(gid, { confirmed: true, confirmedAt: new Date(), certVerified: true, certName: fileName });
+    const origin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+    // Privacy: tell the OTHER guardians a passing was reported — never which guardian did it.
+    const others = await Guardian.find({ userId, _id: { $ne: gid }, email: { $nin: [null, ""] } });
+    for (const o of others) {
+      try {
+        await sendEmail({
+          to: o.email,
+          subject: `Action needed — a passing was reported for ${user.name}`,
+          text: `A guardian has reported the passing of ${user.name} and uploaded a death certificate.\n\nTwo guardians must agree before anything is released. If you believe this is correct, please confirm:\n\n1) Go to ${origin}/access\n2) Enter ${user.name}'s email or phone\n3) Verify your own email with the code we send\n4) Upload the death certificate\n\nIf this is unexpected, do nothing and contact the family.`,
+        });
+      } catch {}
     }
-    res.json({ email, estates });
+
+    const counts = await guardianCounts(userId);
+    let executing = user.estateState === "EXECUTING";
+    if (!executing && counts.confirmedGuardians >= counts.threshold) {
+      await User.findByIdAndUpdate(userId, { estateState: "EXECUTING" });
+      await Message.updateMany({ userId, deliverOn: "death" }, { delivered: true });
+      await TriggerEvent.findOneAndUpdate({ userId, step: "executed" }, { userId, step: "executed", status: "ok", txHash: process.env.PROOF_TX || null }, { upsert: true });
+      executing = true;
+      const emails = new Set();
+      (await Message.find({ userId, delivered: true })).forEach((m) => msgRecipients(m).forEach((e) => e && emails.add(e)));
+      for (const to of emails) {
+        try { await sendEmail({ to, subject: `A message from ${user.name}`, text: `${user.name} left something for you. Open it at ${origin}/access (enter ${user.name}'s email), or ${origin}/inbox/${userId}.` }); } catch {}
+      }
+    }
+    const g = await Guardian.findById(gid);
+    const fresh = await User.findById(userId).select("name estateState");
+    res.json({ certValid: true, executing, ...(await guardianCounts(userId)), ...(executing ? await guardianGrants(g, fresh) : {}) });
+  } catch (e) { next(e); }
+});
+
+// Refresh the guardian's view (status counts; grants once executing) without re-entering an OTP.
+r.post("/guardian-state", guardianAuth, async (req, res, next) => {
+  try {
+    const { userId, gid } = req.guardian;
+    const g = await Guardian.findById(gid);
+    const user = await User.findById(userId).select("name estateState");
+    if (!g || !user) return res.status(404).json({ error: "not found" });
+    const executing = user.estateState === "EXECUTING";
+    res.json({
+      guardianName: g.name, ownerName: user.name, estateState: user.estateState,
+      youConfirmed: !!g.confirmed, executing, ...(await guardianCounts(userId)),
+      ...(executing ? await guardianGrants(g, user) : {}),
+    });
   } catch (e) { next(e); }
 });
 
