@@ -5,17 +5,27 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENV_PATH = path.resolve(__dirname, "../../backend/.env");
+const ACTORS_PATH = path.resolve(__dirname, "../demo-actors.json");
 
-// Fill these before deploying. Use THROWAWAY testnet addresses.
-const GUARDIANS = [
+// Default placeholders (used if demo-actors.json is absent). Use THROWAWAY addresses.
+let GUARDIANS = [
   "0x0000000000000000000000000000000000000001",
   "0x0000000000000000000000000000000000000002",
   "0x0000000000000000000000000000000000000003",
 ];
-const BENEFICIARIES = [
+let BENEFICIARIES = [
   { wallet: "0x0000000000000000000000000000000000000004", bps: 10000 },
 ];
-const INITIAL_FUNDING_ETH = "0.02"; // small — Sepolia test ETH
+const INITIAL_FUNDING_ETH = "0.005"; // small symbolic inheritance for the demo payout
+
+// If a demo cast exists, deploy with guardians/beneficiary we actually control
+// (needed to demo the live confirm -> execute flip). See scripts/gen-demo-actors.js.
+if (fs.existsSync(ACTORS_PATH)) {
+  const a = JSON.parse(fs.readFileSync(ACTORS_PATH, "utf8"));
+  GUARDIANS = a.guardians.map((g) => g.address);
+  BENEFICIARIES = [{ wallet: a.beneficiary.address, bps: 10000 }];
+  console.log("Using demo-actors.json for guardians + beneficiary.");
+}
 
 function setEnvVar(file, key, value) {
   let s = fs.readFileSync(file, "utf8");

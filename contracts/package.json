@@ -6,6 +6,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "wallet": "node scripts/gen-wallet.js",
+    "demo:actors": "node scripts/gen-demo-actors.js",
+    "demo:trigger": "node scripts/demo-trigger.js",
     "deploy": "hardhat run scripts/deploy.js --network sepolia"
   },
   "devDependencies": {
