@@ -3,24 +3,54 @@
 @tailwind utilities;
 
 :root { color-scheme: light; }
+
+html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: #FBF7F0;
+  background: radial-gradient(1100px 520px at 50% -10%, #FFFDF8 0%, #FBF7F0 60%);
+  background-attachment: fixed;
   color: #2B2A28;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; color: #2B2A28; }
+::selection { background: rgba(200, 116, 58, 0.18); }
+
+@layer base {
+  /* sensible default hierarchy so screens read as designed, not defaulted */
+  h1 { @apply text-title md:text-hero; }
+  h2 { @apply text-h md:text-title; }
+  h3 { @apply text-h; }
+  a { @apply transition-colors; }
+  *:focus-visible { @apply outline-none; }
+}
 
 @layer components {
-  .card { @apply bg-card border border-line rounded-2xl p-6 shadow-[0_1px_2px_rgba(43,42,40,0.04)]; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition; }
-  .btn-ember { @apply btn bg-ember text-white hover:brightness-95; }
-  .btn-ghost { @apply btn border border-line text-ink hover:bg-paper; }
-  .field { @apply w-full rounded-xl border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-ember; }
-  .label { @apply block text-xs uppercase tracking-wide text-mist mb-1.5; }
-  .pill { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs; }
-  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .card { @apply bg-card border border-line rounded-xl2 p-6 shadow-card; }
+  .card-hover { @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-lift; }
+
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium tracking-tight transition duration-150 focus-visible:shadow-focus disabled:opacity-40 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-ember text-white shadow-[0_1px_2px_rgba(200,116,58,0.45)] hover:bg-ember-600 active:translate-y-px; }
+  .btn-secondary { @apply btn border border-line bg-card text-ink hover:bg-paper hover:border-mist/40 active:translate-y-px; }
+  .btn-ghost { @apply btn text-graphite hover:text-ink hover:bg-line/50; }
+  .btn-sm { @apply px-3.5 py-1.5 text-[13px]; }
+  /* keep legacy alias so older screens don't break mid-migration */
+  .btn-ember { @apply btn-primary; }
+
+  .field { @apply w-full rounded-xl border border-line bg-cloud px-3.5 py-2.5 text-sm text-ink transition placeholder:text-mist/60 focus:border-ember focus:shadow-focus focus:bg-card; }
+  .label { @apply block text-xs font-medium uppercase tracking-[0.08em] text-mist mb-1.5; }
+
+  .pill { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium; }
+  .chip { @apply inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition cursor-pointer select-none; }
+
+  .nav-link { @apply inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-graphite transition hover:text-ink hover:bg-line/50; }
+  .nav-link-active { @apply bg-ink text-paper hover:bg-ink hover:text-paper; }
+
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .skeleton { @apply animate-pulse rounded-md bg-line/60; }
+  .hairline { @apply border-line; }
 }
 
 /* Candle flicker — the signature. Goes still when .flame--still is applied (death). */
@@ -30,4 +60,10 @@ h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; letter-s
 }
 .flame { transform-origin: bottom center; animation: flicker 2.4s ease-in-out infinite; }
 .flame--still { animation: none; opacity: .25; }
-@media (prefers-reduced-motion: reduce) { .flame { animation: none; } }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flame, .rise { animation: none; }
+}

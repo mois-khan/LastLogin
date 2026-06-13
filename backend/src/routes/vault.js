@@ -15,8 +15,10 @@ r.get("/", async (req, res, next) => {
 
 r.post("/", async (req, res, next) => {
   try {
-    const { type, label, secret } = req.body;
-    const item = await VaultItem.create({ userId: req.user.id, type, label, blob: encrypt(secret) });
+    const { type, label, fields, secret } = req.body;
+    // Store the real, detailed record as one encrypted blob (raw values NEVER persisted).
+    const payload = fields ? JSON.stringify(fields) : (secret ?? "");
+    const item = await VaultItem.create({ userId: req.user.id, type, label, blob: encrypt(payload) });
     res.json({ id: item._id, type, label });
   } catch (e) { next(e); }
 });
@@ -26,7 +28,10 @@ r.get("/:id/reveal", async (req, res, next) => {
   try {
     const item = await VaultItem.findOne({ _id: req.params.id, userId: req.user.id });
     if (!item) return res.status(404).json({ error: "not found" });
-    res.json({ secret: decrypt(item.blob) });
+    const raw = decrypt(item.blob);
+    let fields;
+    try { fields = JSON.parse(raw); } catch { fields = { value: raw }; } // tolerate older plain-string items
+    res.json({ fields });
   } catch (e) { next(e); }
 });
 
