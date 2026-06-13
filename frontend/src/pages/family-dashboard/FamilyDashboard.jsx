@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ExternalLink, ShieldCheck, Heart } from "lucide-react";
+import { ExternalLink, ShieldCheck, Heart, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import Candle from "../../components/ui/Candle.jsx";
 
@@ -50,9 +50,10 @@ export default function FamilyDashboard() {
                   {m.recipientName && <p className="text-xs uppercase tracking-wide text-mist mb-2">For {m.recipientName}</p>}
                   <p className="text-lg leading-relaxed mb-4">{m.text}</p>
                   {m.audioUrl && (
-                    <audio controls src={m.audioUrl} className="w-full">
-                      Your browser can't play this audio.
-                    </audio>
+                    <>
+                      <audio controls src={m.audioUrl} className="w-full">Your browser can't play this audio.</audio>
+                      <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 mt-3 text-xs text-ember hover:underline"><Download size={13} /> Download this message</a>
+                    </>
                   )}
                   <p className="mt-3 text-xs text-mist">Spoken in their own voice.</p>
                 </div>

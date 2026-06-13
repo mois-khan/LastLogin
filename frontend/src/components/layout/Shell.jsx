@@ -1,5 +1,5 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail } from "lucide-react";
+import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
+import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const links = [
@@ -49,6 +49,25 @@ export default function Shell() {
       <main className="mx-auto max-w-content px-6 py-12">
         <Outlet />
       </main>
+      <StepNav />
+    </div>
+  );
+}
+
+// Previous / Next through the setup sequence — so you can always move back or forward.
+function StepNav() {
+  const { pathname } = useLocation();
+  const i = links.findIndex((l) => pathname.startsWith(l.to));
+  if (i === -1) return null;
+  const prev = links[i - 1], next = links[i + 1];
+  return (
+    <div className="mx-auto max-w-content px-6 pb-14 flex items-center justify-between gap-3">
+      {prev ? (
+        <Link to={prev.to} className="btn-secondary btn-sm"><ArrowLeft size={15} /> {prev.label}</Link>
+      ) : <span />}
+      {next ? (
+        <Link to={next.to} className="btn-primary btn-sm">Next: {next.label} <ArrowRight size={15} /></Link>
+      ) : <span />}
     </div>
   );
 }
