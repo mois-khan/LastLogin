@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Mic, Square, Sparkles, Loader2, Check, AudioLines } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -116,6 +116,7 @@ export default function Messages() {
           <div className="flex items-center gap-2 mb-3 text-sage-600"><AudioLines size={18} /><h3 className="text-h text-ink">Preview</h3></div>
           <p className="text-graphite leading-relaxed mb-4">{result.translatedText}</p>
           <audio controls src={result.audioUrl} className="w-full" />
+          <a href={result.audioUrl} download="lastlogin-message.mp3" className="btn-secondary btn-sm mt-3"><Download size={14} /> Download</a>
         </div>
       )}
     </div>
