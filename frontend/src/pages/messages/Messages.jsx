@@ -18,7 +18,7 @@ export default function Messages() {
   const [cloning, setCloning] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState(null); // { tone: 'ok'|'err'|'busy', text }
-  const [form, setForm] = useState({ recipientName: "", text: "", language: "hi-IN" });
+  const [form, setForm] = useState({ recipientName: "", recipientEmail: "", text: "", language: "hi-IN" });
   const [result, setResult] = useState(null);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
@@ -94,6 +94,9 @@ export default function Messages() {
           <label className="label">To</label>
           <input className="field mb-3" value={form.recipientName}
             onChange={(e) => setForm({ ...form, recipientName: e.target.value })} placeholder="e.g. My daughter Ananya" />
+          <label className="label">Their email — only they can open it</label>
+          <input className="field mb-3" type="email" value={form.recipientEmail}
+            onChange={(e) => setForm({ ...form, recipientEmail: e.target.value })} placeholder="ananya@example.com" />
           <label className="label">Language</label>
           <select className="field mb-3" value={form.language}
             onChange={(e) => setForm({ ...form, language: e.target.value })}>
