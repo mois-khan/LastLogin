@@ -1,58 +1,81 @@
 import { useEffect, useState } from "react";
+import { UserPlus, ShieldCheck, Check } from "lucide-react";
 import { api } from "../../lib/api.js";
 
 export default function Guardians() {
-  const [state, setState] = useState({ guardians: [], confirmed: 0, threshold: 2 });
+  const [state, setState] = useState(null); // { guardians, confirmed, threshold }
   const [form, setForm] = useState({ name: "", email: "", walletAddress: "" });
+  const [saving, setSaving] = useState(false);
 
   const load = async () => setState((await api.get("/guardians")).data);
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load().catch(() => setState({ guardians: [], confirmed: 0, threshold: 2 })); }, []);
 
   const add = async () => {
-    if (!form.name) return;
-    await api.post("/guardians", form);
-    setForm({ name: "", email: "", walletAddress: "" }); load();
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      await api.post("/guardians", form);
+      setForm({ name: "", email: "", walletAddress: "" }); await load();
+    } finally { setSaving(false); }
   };
 
+  const confirmed = state?.confirmed ?? 0;
+  const threshold = state?.threshold ?? 2;
+  const guardians = state?.guardians ?? [];
+
   return (
-    <div>
-      <h1 className="text-3xl mb-1">Trusted guardians</h1>
-      <p className="text-mist mb-6">Choose 3 people. Any 2 together can confirm your passing — no single person can act alone.</p>
+    <div className="rise">
+      <h1 className="font-display text-title mb-1">Trusted guardians</h1>
+      <p className="text-mist mb-8 max-w-xl">Choose 3 people. Any 2 together can confirm your passing — no single person can act alone.</p>
 
       <div className="card max-w-xl mb-6">
         <div className="flex items-center gap-3">
+          <span className="grid place-items-center h-9 w-9 rounded-xl bg-sage/12 text-sage-600 shrink-0"><ShieldCheck size={18} /></span>
           <div className="flex-1 h-2 rounded-full bg-line overflow-hidden">
-            <div className="h-full bg-sage transition-all"
-              style={{ width: `${Math.min(100, (state.confirmed / state.threshold) * 100)}%` }} />
+            <div className="h-full bg-sage transition-all duration-500" style={{ width: `${Math.min(100, (confirmed / threshold) * 100)}%` }} />
           </div>
-          <span className="text-sm text-mist">{state.confirmed} of {state.threshold} confirmations</span>
+          <span className="text-sm text-mist whitespace-nowrap">{confirmed} of {threshold} confirmed</span>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="card">
-          <h3 className="text-lg mb-3">Add a guardian</h3>
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="card lg:col-span-1 self-start">
+          <h3 className="text-h mb-4 flex items-center gap-2"><UserPlus size={18} className="text-ember" /> Add a guardian</h3>
           <label className="label">Name</label>
           <input className="field mb-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <label className="label">Email</label>
-          <input className="field mb-3" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input className="field mb-3" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <label className="label">Wallet address</label>
           <input className="field mb-4 mono text-xs" value={form.walletAddress}
             onChange={(e) => setForm({ ...form, walletAddress: e.target.value })} placeholder="0x…" />
-          <button className="btn-ember w-full" onClick={add}>Add guardian</button>
+          <button className="btn-primary w-full" onClick={add} disabled={saving || !form.name.trim()}>
+            {saving ? "Adding…" : "Add guardian"}
+          </button>
         </div>
-        <div className="card md:col-span-2">
-          <ul className="divide-y divide-line">
-            {state.guardians.map((g) => (
-              <li key={g._id} className="py-3 flex items-center gap-3">
-                <span className="flex-1">{g.name} <span className="text-mist text-sm">· {g.email}</span></span>
-                <span className={`pill ${g.confirmed ? "bg-sage/15 text-sage" : "bg-paper text-mist"}`}>
-                  {g.confirmed ? "confirmed" : "standing by"}
-                </span>
-              </li>
-            ))}
-            {!state.guardians.length && <li className="py-6 text-mist text-sm">No guardians yet.</li>}
-          </ul>
+
+        <div className="card lg:col-span-2">
+          {state === null ? (
+            <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-12" />)}</div>
+          ) : guardians.length ? (
+            <ul className="divide-y divide-line">
+              {guardians.map((g) => (
+                <li key={g._id} className="py-3 flex items-center gap-3">
+                  <span className="grid place-items-center h-9 w-9 rounded-full bg-paper border border-line text-sm text-mist shrink-0">{g.name?.[0] || "?"}</span>
+                  <span className="flex-1">
+                    <span className="block text-sm">{g.name}</span>
+                    {g.email && <span className="block text-xs text-mist">{g.email}</span>}
+                  </span>
+                  {g.confirmed ? (
+                    <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> confirmed</span>
+                  ) : (
+                    <span className="pill bg-paper text-mist border border-line">standing by</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center py-12 text-mist text-sm">No guardians yet. Add three people you trust on the left.</div>
+          )}
         </div>
       </div>
     </div>
