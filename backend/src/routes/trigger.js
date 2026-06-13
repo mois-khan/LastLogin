@@ -11,6 +11,7 @@ import Guardian from "../models/Guardian.js";
 import VaultItem from "../models/VaultItem.js";
 import { decrypt } from "../services/crypto/vault.js";
 import Message from "../models/Message.js";
+import Attachment from "../models/Attachment.js";
 import TriggerEvent from "../models/TriggerEvent.js";
 import Otp from "../models/Otp.js";
 import * as gemini from "../services/ai/gemini.js";
@@ -218,26 +219,29 @@ r.post("/guardian-access", async (req, res, next) => {
     const { userId, email, code } = req.body;
     if (!(await takeOtp(`ga:${userId}:${(email || "").toLowerCase()}`, code))) return res.status(401).json({ error: "Invalid or expired code." });
     const g = await Guardian.findOne({ userId, email });
+    if (!g) return res.status(404).json({ error: "You're not listed as a guardian for this person." });
     const user = await User.findById(userId).select("name estateState");
-    let items = [], messages = [];
+    let items = [], files = [], messages = [];
     if (user?.estateState === "EXECUTING") {
-      if (g.access?.length) {
-        const found = await VaultItem.find({ userId, type: { $in: g.access } });
-        items = found.map((i) => {
-          if (i.scheme === "server") {
-            try {
-              const raw = decrypt(i.blob);
-              let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
-              return { type: i.type, label: i.label, fields };
-            } catch { return { type: i.type, label: i.label, locked: true }; }
-          }
-          return { type: i.type, label: i.label, locked: true }; // zero-knowledge — opens with the guardian quorum (Shamir)
-        });
-      }
+      // STRICT isolation: only assets THIS guardian was granted AND flagged "transfer".
+      // A "delete" asset can never appear here — it's excluded at the query level.
+      const found = await VaultItem.find({ _id: { $in: g.assetAccess || [] }, userId, disposition: "transfer" });
+      items = found.map((i) => {
+        if (i.scheme === "server") {
+          try {
+            const raw = decrypt(i.blob);
+            let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
+            return { type: i.type, label: i.label, platform: i.platform, fields };
+          } catch { return { type: i.type, label: i.label, platform: i.platform, locked: true }; }
+        }
+        return { type: i.type, label: i.label, platform: i.platform, locked: true }; // legacy client-encrypted
+      });
+      const gf = await Attachment.find({ _id: { $in: g.fileAccess || [] }, userId, disposition: "transfer" });
+      files = gf.map((f) => ({ id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, dataUrl: f.dataUrl }));
       messages = (await Message.find({ userId, delivered: true })).map((m) =>
         ({ id: m._id, recipientName: m.recipientName, text: m.text, audioUrl: m.audioUrl, language: m.language }));
     }
-    res.json({ name: g.name, access: g.access, estateState: user?.estateState, items, messages });
+    res.json({ name: g.name, estateState: user?.estateState, items, files, messages });
   } catch (e) { next(e); }
 });
 

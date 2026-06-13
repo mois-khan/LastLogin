@@ -4,6 +4,7 @@ import { auth } from "../middleware/auth.js";
 import Guardian from "../models/Guardian.js";
 import User from "../models/User.js";
 import VaultItem from "../models/VaultItem.js";
+import Attachment from "../models/Attachment.js";
 
 const r = Router();
 r.use(auth);
@@ -19,8 +20,8 @@ r.get("/", async (req, res, next) => {
 
 r.post("/", async (req, res, next) => {
   try {
-    const { name, email, walletAddress, access } = req.body;
-    const g = await Guardian.create({ userId: req.user.id, name, email, walletAddress, access: access || [] });
+    const { name, email, phone, walletAddress, access } = req.body;
+    const g = await Guardian.create({ userId: req.user.id, name, email, phone, walletAddress, access: access || [] });
     res.json(g);
   } catch (e) { next(e); }
 });
@@ -45,26 +46,37 @@ r.post("/security", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// RBAC: set which vault categories a guardian may access.
+// Per-guardian grants: exactly which assets + files this guardian may receive.
+// Each guardian's grants are stored independently — isolated, per the spec.
 r.post("/:id/access", async (req, res, next) => {
   try {
-    const g = await Guardian.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
-      { access: Array.isArray(req.body.access) ? req.body.access : [] },
-      { new: true }
-    );
+    const patch = {};
+    if (Array.isArray(req.body.assetAccess)) patch.assetAccess = req.body.assetAccess;
+    if (Array.isArray(req.body.fileAccess)) patch.fileAccess = req.body.fileAccess;
+    if (Array.isArray(req.body.access)) patch.access = req.body.access; // legacy categories
+    const g = await Guardian.findOneAndUpdate({ _id: req.params.id, userId: req.user.id }, patch, { new: true });
     if (!g) return res.status(404).json({ error: "not found" });
     res.json(g);
   } catch (e) { next(e); }
 });
 
-// RBAC in action: exactly the vault items this guardian is permitted to see.
-r.get("/:id/vault", async (req, res, next) => {
+// Configuration panel for one guardian: every TRANSFERABLE asset/file + what's granted.
+// Deletion-flagged items are excluded entirely — they can never be toggled on for anyone.
+r.get("/:id/config", async (req, res, next) => {
   try {
     const g = await Guardian.findOne({ _id: req.params.id, userId: req.user.id });
     if (!g) return res.status(404).json({ error: "not found" });
-    const items = await VaultItem.find({ userId: req.user.id, type: { $in: g.access } });
-    res.json({ guardian: g.name, access: g.access, items: items.map((i) => ({ id: i._id, type: i.type, label: i.label })) });
+    const [assets, files] = await Promise.all([
+      VaultItem.find({ userId: req.user.id, disposition: "transfer" }).sort({ createdAt: 1 }),
+      Attachment.find({ userId: req.user.id, disposition: "transfer" }).sort({ createdAt: 1 }),
+    ]);
+    const granted = new Set((g.assetAccess || []).map(String));
+    const grantedFiles = new Set((g.fileAccess || []).map(String));
+    res.json({
+      guardian: { id: g._id, name: g.name, email: g.email },
+      assets: assets.map((i) => ({ id: i._id, type: i.type, label: i.label, platform: i.platform, granted: granted.has(String(i._id)) })),
+      files: files.map((f) => ({ id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, granted: grantedFiles.has(String(f._id)) })),
+    });
   } catch (e) { next(e); }
 });
 
