@@ -3,6 +3,7 @@ import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download, Plus, X, G
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import AudioPlayer from "../../components/ui/AudioPlayer.jsx";
+import SoundBars from "../../components/ui/SoundBars.jsx";
 
 const LANGS = [
   { code: "hi-IN", label: "Hindi" },
@@ -102,7 +103,10 @@ export default function Messages() {
           {cloning ? (
             <span className="flex items-center gap-2 text-sm text-graphite shrink-0"><Loader2 size={16} className="animate-spin text-ember" /> Cloning…</span>
           ) : recording ? (
-            <button className="btn-secondary shrink-0 animate-pulse" onClick={stopRec}><Square size={15} /> Stop recording</button>
+            <div className="flex items-center gap-3 shrink-0">
+              <SoundBars className="text-ember" />
+              <button className="btn-secondary" onClick={stopRec}><Square size={15} /> Stop recording</button>
+            </div>
           ) : voiceId ? (
             <div className="flex items-center gap-2 shrink-0">
               <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Cloned</span>

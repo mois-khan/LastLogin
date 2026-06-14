@@ -226,7 +226,10 @@ r.get("/family/:userId", async (req, res, next) => {
     const messages = await Message.find({ userId: req.params.userId, delivered: true, scope: "global" });
     const events = await TriggerEvent.find({ userId: req.params.userId });
     const executedTx = events.find((e) => e.step === "executed")?.txHash;
-    res.json({ name: user.name, messages, executedTx });
+    // The proof behind the "verified death" narrative: a guardian-uploaded cert that passed Gemini Vision.
+    const cert = events.find((e) => e.step === "cert_verified" && e.status === "pass");
+    const certVerifiedAt = cert?.createdAt || null;
+    res.json({ name: user.name, messages, executedTx, certVerifiedAt });
   } catch (e) { next(e); }
 });
 

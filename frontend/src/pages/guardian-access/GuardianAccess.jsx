@@ -240,25 +240,28 @@ export default function GuardianAccess() {
               </p>
               <p className="text-xs text-mist mb-5">Accepted: a photo or PDF of the certificate.</p>
 
+              {certReason && (
+                <p className="text-sm text-ember mb-3">{certReason}</p>
+              )}
+
               {verifying ? (
                 <div className="flex items-center gap-2 text-sm text-graphite py-2">
                   <Loader2 size={16} className="animate-spin text-ember" />
                   Verifying with Gemini Vision…
                 </div>
               ) : (
-                <label className="btn-primary btn-sm cursor-pointer inline-flex">
-                  <Upload size={16} /> Upload certificate
+                // Resetting value on click lets a guardian re-pick the SAME file after a rejection
+                // (browsers skip onChange for an identical re-selection otherwise).
+                <label className={`btn-sm cursor-pointer inline-flex ${certReason ? "btn-secondary" : "btn-primary"}`}>
+                  <Upload size={16} /> {certReason ? "Try another file" : "Upload certificate"}
                   <input
                     type="file"
                     accept="image/*,application/pdf"
                     className="hidden"
+                    onClick={(e) => { e.target.value = ""; }}
                     onChange={(e) => uploadCert(e.target.files?.[0])}
                   />
                 </label>
-              )}
-
-              {certReason && (
-                <p className="text-sm text-ember mt-3">{certReason} Please try again.</p>
               )}
               {err && <p className="text-sm text-ember mt-3">{err}</p>}
             </div>
