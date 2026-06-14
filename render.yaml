@@ -1,0 +1,40 @@
+# One-click FREE deploy on Render (https://render.com) — a Blueprint.
+# Render → New → Blueprint → connect this repo. It builds the frontend, runs the backend
+# (which serves that frontend), and gives an automatic https://<name>.onrender.com URL —
+# https means the microphone (voice cloning + the companion) works. $0 on the free plan.
+# You'll paste each secret below into the dashboard; they are NOT stored in git.
+services:
+  - type: web
+    name: lastlogin
+    runtime: node
+    plan: free
+    buildCommand: npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend
+    startCommand: node backend/src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: VAULT_MASTER_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SEPOLIA_RPC_URL
+        sync: false
+      - key: CONTRACT_ADDRESS
+        sync: false
+      - key: PROOF_TX
+        sync: false
