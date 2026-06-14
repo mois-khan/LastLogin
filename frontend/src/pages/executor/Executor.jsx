@@ -27,7 +27,7 @@ function sendStatus(a) {
     return { tone: "ember", line: ls?.error || "Send failed", meta: ls };
   }
   if (a.status === "sent" && ls) {
-    if (ls.code === 202) return { tone: "sage", line: "Sent — SendGrid accepted (202)", meta: ls };
+    if (ls.code === 202) return { tone: "sage", line: "Sent - SendGrid accepted (202)", meta: ls };
     if (ls.code === 0 || ls.provider === "mock") return { tone: "mist", line: "Mock send (no SENDGRID key set)", meta: ls };
     return { tone: "sage", line: `Sent${ls.provider ? ` via ${ls.provider}` : ""}`, meta: ls };
   }
@@ -42,7 +42,7 @@ function fmtTime(at) {
   return Number.isNaN(d.getTime()) ? null : d.toLocaleString();
 }
 
-// Vector brand mark from our provider set (offline, crisp on paper) — falls back to a category glyph.
+// Vector brand mark from our provider set (offline, crisp on paper) - falls back to a category glyph.
 const KEY_BY_NAME = { google: "gmail", gmail: "gmail", outlook: "outlook", instagram: "instagram", facebook: "facebook", x: "x", twitter: "x", linkedin: "linkedin", netflix: "netflix", spotify: "spotify", amazon: "amazon", apple: "apple", icloud: "icloud", paypal: "paypal", dropbox: "dropbox", github: "github" };
 const markFor = (name, category) => {
   const k = KEY_BY_NAME[(name || "").toLowerCase().replace(/[^a-z]/g, "")];
@@ -88,7 +88,7 @@ export default function Executor() {
     <div className="rise">
       <h1 className="font-display text-title mb-1">Account executor</h1>
       <p className="text-mist mb-8 max-w-xl">
-        List the services you use. When the time comes, we send each one a request — to close, memorialize, or transfer the account — drafted for you.
+        List the services you use. When the time comes, we send each one a request - to close, memorialize, or transfer the account - drafted for you.
       </p>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -177,8 +177,8 @@ export default function Executor() {
               })}
             </div>
           )}
-          <p className="mt-4 text-xs text-mist">Requests are sent to your test inbox for the demo — never to real companies.</p>
-          <p className="mt-1.5 text-xs text-mist">A 202 means SendGrid accepted it for delivery — see the SendGrid Activity feed (sendgrid.com &rarr; Activity) for the delivery receipt.</p>
+          <p className="mt-4 text-xs text-mist">Requests are sent to your test inbox for the demo - never to real companies.</p>
+          <p className="mt-1.5 text-xs text-mist">A 202 means SendGrid accepted it for delivery - see the SendGrid Activity feed (sendgrid.com &rarr; Activity) for the delivery receipt.</p>
         </div>
       </div>
     </div>

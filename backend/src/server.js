@@ -36,7 +36,7 @@ app.use("/api/accounts", accountRoutes);
 app.use("/api/attachments", attachmentRoutes);
 app.use("/api/clone", cloneRoutes);
 
-// Production: serve the built frontend from this same server (one origin — no CORS, no proxy).
+// Production: serve the built frontend from this same server (one origin - no CORS, no proxy).
 // Skipped automatically in dev (no dist yet): there you run Vite on :5173 with its /api proxy.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, "../../frontend/dist");

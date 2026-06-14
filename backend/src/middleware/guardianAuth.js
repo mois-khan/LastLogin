@@ -13,6 +13,6 @@ export function guardianAuth(req, res, next) {
     req.guardian = p;
     next();
   } catch {
-    return res.status(401).json({ error: "Your session expired — verify again." });
+    return res.status(401).json({ error: "Your session expired - verify again." });
   }
 }

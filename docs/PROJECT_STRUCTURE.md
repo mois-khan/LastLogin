@@ -1,4 +1,4 @@
-# LastLogin — Project Structure (as built)
+# LastLogin - Project Structure (as built)
 
 This reflects the actual files shipped in `lastlogin-project.tar.gz`. Status:
 ✅ built & verified · 🔌 wired to extend · ⬜ TODO (see CLAUDE.md).
@@ -14,7 +14,7 @@ lastlogin/
 │
 ├── contracts/                        ========== [A] BLOCKCHAIN ==========
 │   ├── contracts/LastLogin.sol       ✅ 2-of-3 guardians, beneficiary split,
-│   │                                    proveLife(), setVaultHash() — COMPILES CLEAN
+│   │                                    proveLife(), setVaultHash() - COMPILES CLEAN
 │   ├── test/LastLogin.test.js        ✅ 4 passing tests (proof-of-life, hash, payout, guards)
 │   ├── scripts/deploy.js             ✅ Sepolia deploy (fill addresses)
 │   ├── hardhat.config.js             ✅ optimizer on, etherscan verify ready
@@ -35,7 +35,7 @@ lastlogin/
 │       │   ├── Message.js            ✅ recipient, lang, audioUrl, deliverOn (death|date)
 │       │   └── TriggerEvent.js       ✅ audit log mirroring on-chain events
 │       ├── services/
-│       │   ├── crypto/vault.js       ✅ encrypt/decrypt + vaultFingerprint() — TESTED
+│       │   ├── crypto/vault.js       ✅ encrypt/decrypt + vaultFingerprint() - TESTED
 │       │   ├── ai/gemini.js          ✅ [B] will-assistant + Vision cert-verify +
 │       │   │                            closure draft + obituary
 │       │   ├── ai/elevenlabs.js      ✅ [B] cloneVoice() + speak()

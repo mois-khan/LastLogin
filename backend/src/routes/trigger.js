@@ -36,7 +36,7 @@ const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Exactly what one guardian is owed for one estate: their granted + transfer-flagged assets
 // (decrypted), granted + transfer-flagged files, and the delivered messages. Deletion items
-// are excluded at the query level — they can never reach a guardian.
+// are excluded at the query level - they can never reach a guardian.
 async function guardianGrants(g, user) {
   if (user?.estateState !== "EXECUTING") return { items: [], files: [], messages: [] };
   const found = await VaultItem.find({ _id: { $in: g.assetAccess || [] }, userId: g.userId, disposition: "transfer" });
@@ -76,7 +76,7 @@ async function guardianCounts(userId) {
 }
 
 // Short-lived guardian session, issued after email+OTP. Held in browser memory only, so a
-// fresh visit always re-verifies. Carries only this guardian's identity — never the others.
+// fresh visit always re-verifies. Carries only this guardian's identity - never the others.
 function guardianAuth(req, res, next) {
   const h = req.headers.authorization || "";
   // Prefer the body token: the axios interceptor stamps the logged-in OWNER's token onto the
@@ -87,7 +87,7 @@ function guardianAuth(req, res, next) {
     const p = jwt.verify(tok, process.env.JWT_SECRET);
     if (p.kind !== "guardian") throw new Error("bad kind");
     req.guardian = p; next();
-  } catch { return res.status(401).json({ error: "Your session expired — verify again." }); }
+  } catch { return res.status(401).json({ error: "Your session expired - verify again." }); }
 }
 
 // Step 1: a guardian uploads a death certificate -> Gemini Vision gate
@@ -154,7 +154,7 @@ r.post("/confirm", async (req, res, next) => {
         if (provided !== owner.securityQuestion.answerHash)
           return res.status(401).json({ error: "Security answer is incorrect." });
       }
-      // Mark THIS guardian confirmed directly — robust even when they have no wallet on file.
+      // Mark THIS guardian confirmed directly - robust even when they have no wallet on file.
       // (The old wallet-match update silently no-op'd for wallet-less guardians, so the count
       //  never moved and the UI bounced back to "Confirm" in a loop.)
       g.confirmed = true; g.confirmedAt = new Date(); g.otpCode = null; g.otpExpires = null;
@@ -186,7 +186,7 @@ r.post("/confirm", async (req, res, next) => {
           await sendEmail({
             to: m.recipientEmail,
             subject: `A message from ${u?.name || "someone who loved you"}`,
-            text: `${u?.name || "Someone"} left this message for you:\n\n"${m.text}"\n\nHear it in their own voice — and download it — here: ${origin}/inbox/${userId}`,
+            text: `${u?.name || "Someone"} left this message for you:\n\n"${m.text}"\n\nHear it in their own voice - and download it - here: ${origin}/inbox/${userId}`,
           });
         } catch {}
       }
@@ -293,7 +293,7 @@ r.post("/guardian-access", async (req, res, next) => {
 // --- The /access flow: identify the estate, then verify yourself, then (if needed) report a passing. ---
 
 // Step 1: find the estate by the person's email OR phone (no userId needed in the URL).
-// Returns only the owner's name + the live confirmation count — never the guardian roster.
+// Returns only the owner's name + the live confirmation count - never the guardian roster.
 r.post("/lookup-estate", async (req, res, next) => {
   try {
     const id = String(req.body.identifier || "").trim();
@@ -349,13 +349,13 @@ r.post("/guardian-cert", upload.single("cert"), guardianAuth, async (req, res, n
 
     await Guardian.findByIdAndUpdate(gid, { confirmed: true, confirmedAt: new Date(), certVerified: true, certName: fileName });
     const origin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
-    // Privacy: tell the OTHER guardians a passing was reported — never which guardian did it.
+    // Privacy: tell the OTHER guardians a passing was reported - never which guardian did it.
     const others = await Guardian.find({ userId, _id: { $ne: gid }, email: { $nin: [null, ""] } });
     for (const o of others) {
       try {
         await sendEmail({
           to: o.email,
-          subject: `Action needed — a passing was reported for ${user.name}`,
+          subject: `Action needed - a passing was reported for ${user.name}`,
           text: `A guardian has reported the passing of ${user.name} and uploaded a death certificate.\n\nTwo guardians must agree before anything is released. If you believe this is correct, please confirm:\n\n1) Go to ${origin}/access\n2) Enter ${user.name}'s email or phone\n3) Verify your own email with the code we send\n4) Upload the death certificate\n\nIf this is unexpected, do nothing and contact the family.`,
         });
       } catch {}

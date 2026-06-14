@@ -65,7 +65,7 @@ export default function ReportPassing() {
         <p className="text-xs uppercase tracking-[0.2em] text-mist">Guardian verification</p>
         <h1 className="mt-3 font-display text-title">Report a passing</h1>
         <p className="mt-4 text-graphite leading-relaxed">
-          A careful, verified handover. Nothing is released by one person —
+          A careful, verified handover. Nothing is released by one person -
           a certificate is verified, then <span className="text-ink font-medium">2 of 3 guardians</span> must confirm.
         </p>
 
@@ -76,7 +76,7 @@ export default function ReportPassing() {
           <Step n={2} label="Guardians confirm" active={verified && !executing} done={executing} />
         </div>
 
-        {/* STEP 1 — certificate */}
+        {/* STEP 1 - certificate */}
         {!verified && (
           <div className="mt-8">
             <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden"
@@ -89,7 +89,7 @@ export default function ReportPassing() {
                 <>
                   <span className="grid place-items-center h-12 w-12 rounded-xl bg-ember/12 text-ember"><Upload size={22} /></span>
                   <span className="mt-3 font-medium">Upload the death certificate</span>
-                  <span className="mt-1 text-sm text-mist">{fileName || "A clear photo or scan — JPG, PNG, or PDF"}</span>
+                  <span className="mt-1 text-sm text-mist">{fileName || "A clear photo or scan - JPG, PNG, or PDF"}</span>
                 </>
               )}
             </button>
@@ -115,7 +115,7 @@ export default function ReportPassing() {
           </div>
         )}
 
-        {/* STEP 2 — guardian confirmation */}
+        {/* STEP 2 - guardian confirmation */}
         {verified && !executing && (
           <div className="mt-6 card rise">
             <h2 className="font-display text-h flex items-center gap-2"><Users size={18} /> Guardian confirmation</h2>
@@ -202,7 +202,7 @@ function Field({ label, value }) {
   return (
     <div>
       <dt className="text-xs uppercase tracking-wide text-mist">{label}</dt>
-      <dd className="text-ink mt-0.5">{value || "—"}</dd>
+      <dd className="text-ink mt-0.5">{value || "-"}</dd>
     </div>
   );
 }

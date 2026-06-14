@@ -8,10 +8,10 @@ import CloneChat from "../../components/CloneChat.jsx";
 // The universal guardian hub at /access. A guardian who is NOT logged in finds an estate by
 // the deceased's email or phone, proves they're a named guardian with a one-time code, then
 // either receives what was left in their care (once 2 guardians confirm) or reports the
-// passing by uploading a death certificate — which counts as their own confirmation.
+// passing by uploading a death certificate - which counts as their own confirmation.
 //
 // Stateless on purpose: everything lives in React state and is lost on reload, so each visit
-// re-verifies. We never show other guardians' names or emails — only counts.
+// re-verifies. We never show other guardians' names or emails - only counts.
 
 // A calm sage progress bar. Reads e.g. "1 of 3 confirmed · 2 needed".
 function StatusBar({ confirmed = 0, total = 0, threshold = 2 }) {
@@ -70,7 +70,7 @@ export default function GuardianAccess() {
     setTalkOpen(false);
   };
 
-  // STEP 1 — find the estate by the deceased's email or phone.
+  // STEP 1 - find the estate by the deceased's email or phone.
   const lookupEstate = async (e) => {
     e?.preventDefault();
     setErr(""); setBusy(true);
@@ -85,7 +85,7 @@ export default function GuardianAccess() {
     }
   };
 
-  // STEP 2 — confirm this visitor is a named guardian, send them a code.
+  // STEP 2 - confirm this visitor is a named guardian, send them a code.
   const sendOtp = async (e) => {
     e?.preventDefault();
     setErr(""); setBusy(true);
@@ -103,7 +103,7 @@ export default function GuardianAccess() {
     }
   };
 
-  // STEP 3 — exchange the code for a session + the current estate state.
+  // STEP 3 - exchange the code for a session + the current estate state.
   const verifyCode = async (e) => {
     e?.preventDefault();
     setErr(""); setBusy(true);
@@ -122,7 +122,7 @@ export default function GuardianAccess() {
     }
   };
 
-  // PORTAL — upload a death certificate. This counts as this guardian's confirmation.
+  // PORTAL - upload a death certificate. This counts as this guardian's confirmation.
   // The session token MUST travel in the FormData (the api interceptor overwrites the
   // Authorization header with the owner's token, so a header alone won't reach the route).
   const uploadCert = async (file) => {
@@ -146,7 +146,7 @@ export default function GuardianAccess() {
     }
   };
 
-  // PORTAL — re-poll the estate without re-uploading (flips to grants once executing).
+  // PORTAL - re-poll the estate without re-uploading (flips to grants once executing).
   const checkAgain = async () => {
     setErr(""); setBusy(true);
     try {
@@ -166,7 +166,7 @@ export default function GuardianAccess() {
     const cloneName = state.ownerName || ownerName;
     const firstName = cloneName.split(" ")[0] || "them";
 
-    // The companion chat, wired to the guardian session. The token travels in the request body —
+    // The companion chat, wired to the guardian session. The token travels in the request body -
     // the api interceptor stamps the owner's token on the Authorization header, so a header won't reach.
     const cloneChat = (extra = {}) => (
       <CloneChat name={cloneName} dock {...extra}
@@ -207,7 +207,7 @@ export default function GuardianAccess() {
                   files={state.files}
                 />
               </div>
-              {/* Desktop: the clone chat, docked like an IDE side panel — always present. */}
+              {/* Desktop: the clone chat, docked like an IDE side panel - always present. */}
               <aside className="hidden lg:block lg:sticky lg:top-6">
                 <div className="h-[calc(100vh-7.5rem)]">{cloneChat()}</div>
               </aside>
@@ -220,7 +220,7 @@ export default function GuardianAccess() {
                 <h2 className="font-display text-h">Your confirmation is in</h2>
               </div>
               <p className="text-sm text-graphite leading-relaxed mb-5">
-                Verified. We're waiting for one more guardian to agree — they've been notified
+                Verified. We're waiting for one more guardian to agree - they've been notified
                 by email. Nothing is released until {threshold} guardians confirm. You can
                 check back here at any time.
               </p>
@@ -230,12 +230,12 @@ export default function GuardianAccess() {
               {err && <p className="text-sm text-ember mt-3">{err}</p>}
             </div>
           ) : (
-            // Report a passing — upload a death certificate to cast this guardian's confirmation.
+            // Report a passing - upload a death certificate to cast this guardian's confirmation.
             <div className="card rise">
               <h2 className="font-display text-h mb-2">Report a passing</h2>
               <p className="text-sm text-graphite leading-relaxed mb-2">
                 Nothing in {ownerName}'s estate is released until {threshold} guardians confirm.
-                Uploading a death certificate counts as your confirmation — it's reviewed
+                Uploading a death certificate counts as your confirmation - it's reviewed
                 privately, and never shown to anyone.
               </p>
               <p className="text-xs text-mist mb-5">Accepted: a photo or PDF of the certificate.</p>

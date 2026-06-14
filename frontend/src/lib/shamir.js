@@ -1,6 +1,6 @@
 // Shamir Secret Sharing over GF(256). Splits a secret into N shares such that any
 // THRESHOLD of them reconstruct it, and fewer reveal nothing. We use it to split the
-// vault key across the 3 guardians so any 2 (the on-chain quorum) can recover it —
+// vault key across the 3 guardians so any 2 (the on-chain quorum) can recover it -
 // while no single guardian, and not the server, ever can.
 
 // GF(256) log/exp tables (AES field 0x11b, generator 3).

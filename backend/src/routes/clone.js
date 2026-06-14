@@ -20,7 +20,7 @@ const r = Router();
 const toUrl = (audio) => (audio ? `data:audio/mpeg;base64,${audio.toString("base64")}` : undefined);
 const shape = (m) => ({ id: m._id, role: m.role, text: m.text, language: m.language, audioUrl: m.audioUrl });
 
-// The owner's real secret values — fed to the reply scrubber so a jailbroken generation can
+// The owner's real secret values - fed to the reply scrubber so a jailbroken generation can
 // never echo one to the family (defense in depth; secrets are never put in the prompt at all).
 async function ownerSecrets(userId) {
   try {
@@ -39,7 +39,7 @@ async function ownerSecrets(userId) {
   } catch { return []; }
 }
 
-// Accepts the owner's login token (header) OR a guardian session token (body) — for the shared
+// Accepts the owner's login token (header) OR a guardian session token (body) - for the shared
 // transcription endpoint, which only needs to know the caller is verified, not who.
 function anyAuth(req, res, next) {
   const h = req.headers.authorization || "";
@@ -67,7 +67,7 @@ r.post("/transcribe", upload.single("audio"), anyAuth, async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No audio." });
     const { transcript, language } = await sarvam.stt(req.file.buffer, req.body.language || "unknown", req.file.originalname || "audio.wav");
     let text = transcript;
-    // Show the transcript in Roman/Latin letters (transliteration) — clearer for everyone to read.
+    // Show the transcript in Roman/Latin letters (transliteration) - clearer for everyone to read.
     const nonAscii = [...(text || "")].some((c) => c.charCodeAt(0) > 127);
     if (text && language && !String(language).startsWith("en") && nonAscii) {
       text = await clone.romanize(text, language);
@@ -116,7 +116,7 @@ r.post("/owner-chats", auth, upload.array("chats", 6), async (req, res, next) =>
   try {
     const texts = (req.files || []).map(extractChat).filter((t) => t && t.trim());
     if (!texts.length && req.body.text) texts.push(req.body.text);
-    if (!texts.length) return res.status(400).json({ error: "Upload your exported chat — a .txt or .zip (Export chat → Without media)." });
+    if (!texts.length) return res.status(400).json({ error: "Upload your exported chat - a .txt or .zip (Export chat → Without media)." });
     const u = await User.findById(req.user.id).select("name");
     const summary = await clone.summarizeOwnerChats(texts.join("\n\n---\n\n"), u?.name || "you");
     await Persona.findOneAndUpdate({ userId: req.user.id }, { chatSummary: summary }, { upsert: true });
@@ -166,7 +166,7 @@ async function ensureExecuting(userId, res) {
 }
 
 // Personalize with a WhatsApp export. multer runs BEFORE guardianAuth so the token (a FormData
-// field) is parsed first. The raw chat is summarized and discarded — only the summary is stored.
+// field) is parsed first. The raw chat is summarized and discarded - only the summary is stored.
 r.post("/guardian-context", upload.single("chat"), guardianAuth, async (req, res, next) => {
   try {
     const { userId, gid } = req.guardian;

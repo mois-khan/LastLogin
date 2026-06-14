@@ -91,7 +91,7 @@ export default function Shell() {
   );
 }
 
-// Previous / Next through the setup sequence — so you can always move back or forward.
+// Previous / Next through the setup sequence - so you can always move back or forward.
 function StepNav() {
   const { pathname } = useLocation();
   const i = links.findIndex((l) => pathname.startsWith(l.to));

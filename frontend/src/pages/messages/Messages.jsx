@@ -62,7 +62,7 @@ export default function Messages() {
     try {
       const { data } = await api.post("/ai/voice/clone", fd);
       setVoiceId(data.voiceId); updateUser({ voiceId: data.voiceId }); setStatus({ tone: "ok", text: "Voice ready." });
-    } catch { setStatus({ tone: "err", text: "Voice cloning failed — check your ElevenLabs plan." }); }
+    } catch { setStatus({ tone: "err", text: "Voice cloning failed - check your ElevenLabs plan." }); }
     finally { setCloning(false); }
   };
 
@@ -89,15 +89,15 @@ export default function Messages() {
   return (
     <div className="rise max-w-2xl mx-auto">
       <h1 className="font-display text-title mb-1">Final messages</h1>
-      <p className="text-mist mb-8 max-w-xl">Leave words for the people who matter — in your own voice, in their language.</p>
+      <p className="text-mist mb-8 max-w-xl">Leave words for the people who matter - in your own voice, in their language.</p>
 
       <div className="space-y-5">
-        {/* 1 — voice (slim banner) */}
+        {/* 1 - voice (slim banner) */}
         <div className="card !p-4 flex items-center gap-4">
           <span className="grid place-items-center h-8 w-8 rounded-full bg-line/60 text-graphite text-xs shrink-0">1</span>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm text-ink">Your voice</p>
-            <p className="text-xs text-mist">A calm 60-second reading — quiet room, clear voice.</p>
+            <p className="text-xs text-mist">A calm 60-second reading - quiet room, clear voice.</p>
           </div>
           {cloning ? (
             <span className="flex items-center gap-2 text-sm text-graphite shrink-0"><Loader2 size={16} className="animate-spin text-ember" /> Cloning…</span>
@@ -113,7 +113,7 @@ export default function Messages() {
           )}
         </div>
 
-        {/* 2 — compose */}
+        {/* 2 - compose */}
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
             <span className="grid place-items-center h-8 w-8 rounded-full bg-line/60 text-graphite text-xs">2</span>
@@ -141,7 +141,7 @@ export default function Messages() {
 
           {scope === "assigned" && (
             <div className="mb-3">
-              <label className="label">Recipients — only they can open it</label>
+              <label className="label">Recipients - only they can open it</label>
               <div className="flex gap-2">
                 <input className="field" type="email" value={emailDraft}
                   onChange={(e) => setEmailDraft(e.target.value)} onKeyDown={onEmailKey}
@@ -180,7 +180,7 @@ export default function Messages() {
             </div>
           </div>
           <p className="text-xs text-mist -mt-1 mb-3">In Hindi, Tamil and others, verbs change by gender. This keeps your voice saying it the way you would.</p>
-          <label className="label">Message (write in English — we'll translate)</label>
+          <label className="label">Message (write in English - we'll translate)</label>
           <textarea className="field mb-4" rows={3} value={form.text}
             onChange={(e) => setForm({ ...form, text: e.target.value })} />
           <button className="btn-primary w-full" disabled={!voiceId || generating || !form.text.trim()} onClick={generate}>

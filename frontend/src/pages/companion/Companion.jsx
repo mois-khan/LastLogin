@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import CloneChat from "../../components/CloneChat.jsx";
 import { startRecording } from "../../lib/audio.js";
 
-// Speak an answer instead of typing it — record -> Sarvam STT -> text appended, with clear feedback.
+// Speak an answer instead of typing it - record -> Sarvam STT -> text appended, with clear feedback.
 function QuestionMic({ onText }) {
   const [phase, setPhase] = useState("idle"); // idle | rec | stt | done | err
   const recRef = useRef(null);
@@ -54,13 +54,13 @@ function OwnerChats({ hasChats, onLearned }) {
       picked.forEach((f) => fd.append("chats", f));
       const { data } = await api.post("/clone/owner-chats", fd);
       setSummary(data.summary); onLearned?.();
-    } catch (e) { setErr(e.response?.data?.error || "Couldn't read that — export it without media (.txt or .zip)."); }
+    } catch (e) { setErr(e.response?.data?.error || "Couldn't read that - export it without media (.txt or .zip)."); }
     finally { setBusy(false); if (ref.current) ref.current.value = ""; }
   };
   return (
     <div className="card mb-6">
       <h3 className="text-h mb-1 flex items-center gap-2"><MessageSquare size={18} className="text-ember" /> Teach it how you really talk <span className="text-xs text-mist font-body">· optional</span></h3>
-      <p className="text-sm text-mist mb-4">Upload your exported WhatsApp chats and we learn your real voice — your phrases, your humor, how you check in on people. We keep only a private summary, never the chat.</p>
+      <p className="text-sm text-mist mb-4">Upload your exported WhatsApp chats and we learn your real voice - your phrases, your humor, how you check in on people. We keep only a private summary, never the chat.</p>
       <input ref={ref} type="file" accept=".txt,.zip" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
       {summary ? (
         <div className="rounded-xl bg-sage/[0.08] border border-sage/30 px-4 py-3">
@@ -73,7 +73,7 @@ function OwnerChats({ hasChats, onLearned }) {
           <button onClick={() => ref.current?.click()} disabled={busy} className="btn-secondary btn-sm">
             {busy ? <><Loader2 size={14} className="animate-spin" /> Reading your chats…</> : <><Upload size={14} /> Upload my chats</>}
           </button>
-          {hasChats && <p className="text-xs text-sage-600 mt-2 flex items-center gap-1.5"><Check size={12} /> Your chats are learned — add more anytime.</p>}
+          {hasChats && <p className="text-xs text-sage-600 mt-2 flex items-center gap-1.5"><Check size={12} /> Your chats are learned - add more anytime.</p>}
           {err && <p className="text-xs text-ember mt-2">{err}</p>}
           <p className="text-xs text-mist mt-2">In WhatsApp: open a chat → ⋮ menu → Export chat → Without media → upload the .txt or .zip here.</p>
         </>
@@ -112,14 +112,14 @@ export default function Companion() {
   return (
     <div className="rise max-w-2xl mx-auto">
       <h1 className="font-display text-title mb-2">Your companion</h1>
-      <p className="text-mist mb-8 max-w-xl text-[15px] leading-relaxed">Answer a few questions in your own words — or just upload your chats. We learn how you speak and think, so the people you love can talk with you, in your voice, even after you're gone.</p>
+      <p className="text-mist mb-8 max-w-xl text-[15px] leading-relaxed">Answer a few questions in your own words - or just upload your chats. We learn how you speak and think, so the people you love can talk with you, in your voice, even after you're gone.</p>
 
       {/* voice + grammar */}
       <div className="card mb-6 flex flex-wrap items-center gap-4">
         <span className="grid place-items-center h-10 w-10 rounded-full bg-ember/12 text-ember shrink-0"><Mic size={18} /></span>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm text-ink">Your voice</p>
-          <p className="text-xs text-mist">{persona?.hasVoice ? "Cloned — your companion speaks in your voice." : "Not cloned yet — record it on the Messages page."}</p>
+          <p className="text-xs text-mist">{persona?.hasVoice ? "Cloned - your companion speaks in your voice." : "Not cloned yet - record it on the Messages page."}</p>
         </div>
         {persona?.hasVoice
           ? <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Ready</span>
@@ -127,7 +127,7 @@ export default function Companion() {
         <select className="field !w-auto !py-2 text-xs" value={gender} onChange={(e) => saveGender(e.target.value)} title="Voice grammar">
           <option value="male">He</option>
           <option value="female">She</option>
-          <option value="neutral">—</option>
+          <option value="neutral">-</option>
         </select>
       </div>
 
@@ -190,7 +190,7 @@ export default function Companion() {
       )}
 
       <p className="mt-8 flex items-center gap-2 text-xs text-mist">
-        <ShieldCheck size={14} className="text-sage-600" /> Your companion never shares vault secrets or passwords — those are released only through your guardians.
+        <ShieldCheck size={14} className="text-sage-600" /> Your companion never shares vault secrets or passwords - those are released only through your guardians.
       </p>
     </div>
   );

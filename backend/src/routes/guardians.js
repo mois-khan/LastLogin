@@ -47,7 +47,7 @@ r.post("/security", async (req, res, next) => {
 });
 
 // Per-guardian grants: exactly which assets + files this guardian may receive.
-// Each guardian's grants are stored independently — isolated, per the spec.
+// Each guardian's grants are stored independently - isolated, per the spec.
 r.post("/:id/access", async (req, res, next) => {
   try {
     const patch = {};
@@ -61,7 +61,7 @@ r.post("/:id/access", async (req, res, next) => {
 });
 
 // Configuration panel for one guardian: every TRANSFERABLE asset/file + what's granted.
-// Deletion-flagged items are excluded entirely — they can never be toggled on for anyone.
+// Deletion-flagged items are excluded entirely - they can never be toggled on for anyone.
 r.get("/:id/config", async (req, res, next) => {
   try {
     const g = await Guardian.findOne({ _id: req.params.id, userId: req.user.id });

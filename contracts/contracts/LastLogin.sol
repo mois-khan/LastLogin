@@ -69,7 +69,7 @@ contract LastLogin {
         emit VaultHashUpdated(_hash, block.timestamp);
     }
 
-    /// @notice days since the owner last proved life — guardians/UI use this as a soft signal
+    /// @notice days since the owner last proved life - guardians/UI use this as a soft signal
     function daysInactive() external view returns (uint256) {
         return (block.timestamp - lastSeen) / 1 days;
     }

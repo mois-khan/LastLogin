@@ -48,8 +48,8 @@ r.post("/:id/send", async (req, res, next) => {
     const verb = a.action === "memorialize" ? "Memorialization" : a.action === "transfer" ? "Transfer" : "Closure";
     const to = a.contactEmail || user?.email;
     try {
-      const result = await sendEmail({ to, subject: `${verb} request — ${a.platform}`, text: a.draft });
-      // SendGrid returns HTTP 202 when it accepts the message for delivery — proof it went out.
+      const result = await sendEmail({ to, subject: `${verb} request - ${a.platform}`, text: a.draft });
+      // SendGrid returns HTTP 202 when it accepts the message for delivery - proof it went out.
       const code = result?.status || (result?.mocked ? 0 : 200);
       a.status = "sent"; a.sentAt = new Date();
       a.lastSend = { code, provider: result?.mocked ? "mock (no SENDGRID key set)" : "sendgrid", to, at: new Date(), error: null };

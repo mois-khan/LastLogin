@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// Every outbound email in LastLogin goes through here. Twilio SendGrid — once you've
+// Every outbound email in LastLogin goes through here. Twilio SendGrid - once you've
 // verified a sender (Single Sender Verification) or a domain, it delivers to ANY recipient.
 // Set SENDGRID_API_KEY and SENDGRID_FROM (your verified sender) in backend/.env.
 export async function sendEmail({ to, subject, text, html }) {

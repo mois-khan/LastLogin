@@ -4,7 +4,7 @@ import { api } from "../../lib/api.js";
 
 export default function WillAssistant() {
   const [messages, setMessages] = useState([
-    { role: "model", text: "I'm here to help you set your digital affairs in order — calmly, at your pace. To begin, which online accounts matter most to you?" },
+    { role: "model", text: "I'm here to help you set your digital affairs in order - calmly, at your pace. To begin, which online accounts matter most to you?" },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,7 +29,7 @@ export default function WillAssistant() {
   return (
     <div className="rise">
       <h1 className="font-display text-title mb-1">Your guide</h1>
-      <p className="text-mist mb-8 max-w-xl">A gentle conversation to prepare everything — one question at a time. What you share is captured into your vault.</p>
+      <p className="text-mist mb-8 max-w-xl">A gentle conversation to prepare everything - one question at a time. What you share is captured into your vault.</p>
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card flex flex-col">
@@ -75,7 +75,7 @@ export default function WillAssistant() {
           ) : (
             <div className="card text-sm text-mist sticky top-24">
               <Sparkles size={18} className="text-ember mb-2" />
-              As you talk, the guide quietly organises what you share — accounts, crypto, guardians, final wishes — and it appears here, ready for your vault.
+              As you talk, the guide quietly organises what you share - accounts, crypto, guardians, final wishes - and it appears here, ready for your vault.
             </div>
           )}
         </div>

@@ -24,7 +24,7 @@ export async function deliverDueMessages() {
         await sendEmail({
           to,
           subject: `A message from ${u?.name || "someone who loves you"}`,
-          text: `${u?.name || "Someone"} scheduled this message to reach you today:\n\n"${m.text}"\n\nHear it in their own voice — and download it — here: ${origin}/inbox/${m.userId}`,
+          text: `${u?.name || "Someone"} scheduled this message to reach you today:\n\n"${m.text}"\n\nHear it in their own voice - and download it - here: ${origin}/inbox/${m.userId}`,
         });
       } catch { /* best-effort: a bad address shouldn't block the rest */ }
     }
