@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { connectDB } from "./config/db.js";
 import { errorHandler } from "./middleware/error.js";
 
@@ -31,6 +34,20 @@ app.use("/api/trigger", triggerRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/attachments", attachmentRoutes);
 app.use("/api/clone", cloneRoutes);
+
+// Production: serve the built frontend from this same server (one origin — no CORS, no proxy).
+// Skipped automatically in dev (no dist yet): there you run Vite on :5173 with its /api proxy.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DIST = path.resolve(__dirname, "../../frontend/dist");
+if (fs.existsSync(DIST)) {
+  app.use(express.static(DIST));
+  // SPA fallback: any non-API GET returns index.html so deep links (/access, /app/*) survive a refresh.
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api") || req.path === "/health") return next();
+    res.sendFile(path.join(DIST, "index.html"));
+  });
+  console.log("Serving built frontend from", DIST);
+}
 
 app.use(errorHandler);
 
