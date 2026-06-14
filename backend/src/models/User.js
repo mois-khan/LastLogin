@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     name: String,
     phone: { type: String, index: true }, // lets a guardian look up the estate by phone
+    // Drives gendered grammar in Indian-language translation (karta vs karti) + the clone's voice.
+    gender: { type: String, enum: ["male", "female", "neutral"], default: "neutral" },
     voiceId: String, // ElevenLabs cloned voice id
     lastSeen: { type: Date, default: Date.now }, // proof-of-life
     estateState: { type: String, enum: ["ACTIVE", "EXECUTING"], default: "ACTIVE" },

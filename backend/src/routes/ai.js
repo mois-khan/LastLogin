@@ -42,7 +42,7 @@ r.post("/messages", auth, async (req, res, next) => {
     if (!user.voiceId) return res.status(400).json({ error: "clone your voice first" });
 
     const { translatedText, audio, targetLang } = await generateLegacyMessage({
-      text, targetLang: language || "hi-IN", voiceId: user.voiceId,
+      text, targetLang: language || "hi-IN", voiceId: user.voiceId, gender: user.gender,
     });
 
     // global = everyone (memorial + all guardians); assigned = only the listed emails.

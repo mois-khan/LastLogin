@@ -3,6 +3,7 @@ import { Mail, Loader2, ShieldCheck, ArrowRight, ArrowLeft, Upload } from "lucid
 import { api } from "../../lib/api.js";
 import Candle from "../../components/ui/Candle.jsx";
 import GuardianGrantView from "../../components/GuardianGrantView.jsx";
+import CloneChat from "../../components/CloneChat.jsx";
 
 // The universal guardian hub at /access. A guardian who is NOT logged in finds an estate by
 // the deceased's email or phone, proves they're a named guardian with a one-time code, then
@@ -181,12 +182,21 @@ export default function GuardianAccess() {
           <StatusBar confirmed={confirmed} total={total} threshold={threshold} />
 
           {executing ? (
-            <GuardianGrantView
-              name={state.guardianName}
-              messages={state.messages}
-              items={state.items}
-              files={state.files}
-            />
+            <>
+              <GuardianGrantView
+                name={state.guardianName}
+                messages={state.messages}
+                items={state.items}
+                files={state.files}
+              />
+              <div className="mt-14">
+                <CloneChat name={state.ownerName || ownerName}
+                  sendMessage={(message, language, withAudio) => api.post("/clone/chat", { token: state.token, message, language, withAudio }).then((r) => r.data)}
+                  loadHistory={() => api.post("/clone/history", { token: state.token }).then((r) => r.data)}
+                  clearHistory={() => api.post("/clone/history/clear", { token: state.token })}
+                  uploadContext={(file) => { const fd = new FormData(); fd.append("chat", file); fd.append("token", state.token); return api.post("/clone/guardian-context", fd); }} />
+              </div>
+            </>
           ) : youConfirmed ? (
             // This guardian has already confirmed (via prior cert or upload this visit).
             <div className="card rise">

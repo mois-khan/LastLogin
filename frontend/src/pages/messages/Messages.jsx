@@ -15,6 +15,8 @@ const LANGS = [
 export default function Messages() {
   const { user, updateUser } = useAuth();
   const [voiceId, setVoiceId] = useState(user?.voiceId || "");
+  const [gender, setGender] = useState(user?.gender || "neutral");
+  const saveGender = async (g) => { setGender(g); try { await api.post("/auth/profile", { gender: g }); updateUser({ gender: g }); } catch {} };
   const [recording, setRecording] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -160,11 +162,24 @@ export default function Messages() {
             </div>
           )}
 
-          <label className="label">Language</label>
-          <select className="field mb-3" value={form.language}
-            onChange={(e) => setForm({ ...form, language: e.target.value })}>
-            {LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-          </select>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="label">Language</label>
+              <select className="field" value={form.language}
+                onChange={(e) => setForm({ ...form, language: e.target.value })}>
+                {LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Voice grammar</label>
+              <select className="field" value={gender} onChange={(e) => saveGender(e.target.value)}>
+                <option value="male">He · karta hoon</option>
+                <option value="female">She · karti hoon</option>
+                <option value="neutral">Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <p className="text-xs text-mist -mt-1 mb-3">In Hindi, Tamil and others, verbs change by gender. This keeps your voice saying it the way you would.</p>
           <label className="label">Message (write in English — we'll translate)</label>
           <textarea className="field mb-4" rows={3} value={form.text}
             onChange={(e) => setForm({ ...form, text: e.target.value })} />
