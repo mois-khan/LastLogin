@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip, AudioLines, KeyRound, Loader2, ShieldCheck } from "lucide-react";
+import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip, AudioLines, KeyRound, Loader2, ShieldCheck, Wallet, Fingerprint } from "lucide-react";
 import { providerIcon, providerColor } from "../lib/providers.js";
 import { combine } from "../lib/shamir.js";
 import { importDek, decryptJSON } from "../lib/crypto.js";
+import { connectPhantom, signPhantomMessage, addressesMatch, hasPhantom } from "../lib/phantom.js";
 import AudioPlayer from "./ui/AudioPlayer.jsx";
 import Candle from "./ui/Candle.jsx";
 
 // One estate's grants for a verified guardian - organized into tabs (Messages / Accounts /
 // Files [/ Talk]) so it's a calm dashboard, not an endless scroll. extraTab lets the caller
 // add a section (the companion chat). Reused by /access and /guardian/:userId.
-export default function GuardianGrantView({ name, messages = [], items = [], files = [], extraTab }) {
+export default function GuardianGrantView({ name, messages = [], items = [], files = [], guardianWallet = "", extraTab }) {
   const tabs = [];
   if (messages.length) tabs.push({ key: "messages", label: "Messages", Icon: AudioLines });
   if (items.length) tabs.push({ key: "accounts", label: "Accounts", Icon: KeyRound });
@@ -19,6 +20,8 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
   const [tab, setTab] = useState(tabs[0]?.key);
   const active = tabs.find((t) => t.key === tab)?.key || tabs[0]?.key;
   const talkKey = extraTab?.key || "talk";
+  // Owned here (not in AccountsSection) so the "save a copy" download also respects the Phantom gate.
+  const [phantomUnlocked, setPhantomUnlocked] = useState(false);
 
   const downloadAll = () => {
     const lines = [`LastLogin - released to ${name || "you"}`, ""];
@@ -32,6 +35,7 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
       items.forEach((it) => {
         lines.push(`\n- ${it.label} [${it.platform || it.type}]`);
         if (it.locked) lines.push("  (encrypted - opens with the guardian quorum)");
+        else if (it.phantomLock && !phantomUnlocked) lines.push("  (locked - unlock with your Phantom wallet to reveal)");
         else Object.entries(it.fields || {}).forEach(([k, v]) => lines.push(`  ${k}: ${v}`));
       });
     }
@@ -68,7 +72,7 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
       </div>
 
       {active === "messages" && <MessagesSection messages={messages} />}
-      {active === "accounts" && <AccountsSection items={items} />}
+      {active === "accounts" && <AccountsSection items={items} guardianWallet={guardianWallet} phantomUnlocked={phantomUnlocked} onPhantomUnlock={() => setPhantomUnlocked(true)} />}
       {active === "files" && <FilesSection files={files} />}
       {extraTab && active === talkKey && extraTab.node}
 
@@ -106,12 +110,14 @@ function MessagesSection({ messages }) {
   );
 }
 
-function AccountsSection({ items }) {
+function AccountsSection({ items, guardianWallet, phantomUnlocked, onPhantomUnlock }) {
   // Zero-knowledge items arrive as ciphertext the server can't open. Two guardians paste their
   // recovery codes → we rebuild the vault DEK in THIS browser (Shamir) → decrypt locally.
   const encrypted = items.some((it) => it.scheme === "client" && it.cipher);
   const [opened, setOpened] = useState({}); // index -> decrypted fields
   const [unlocked, setUnlocked] = useState(false);
+  // Crypto recovery phrases stay blurred until this guardian unlocks them with their Phantom wallet.
+  const phantomLocked = items.some((it) => it.phantomLock);
 
   const needsUnlock = encrypted && !unlocked;
 
@@ -124,6 +130,9 @@ function AccountsSection({ items }) {
           onUnlock={(fieldsByIdx) => { setOpened(fieldsByIdx); setUnlocked(true); }}
         />
       )}
+      {phantomLocked && (
+        <PhantomUnlock guardianWallet={guardianWallet} unlocked={phantomUnlocked} onUnlock={onPhantomUnlock} />
+      )}
       <p className="text-sm text-mist mb-5">Tap any value to copy it.</p>
       <div className="space-y-4">
         {items.map((it, idx) => {
@@ -131,19 +140,35 @@ function AccountsSection({ items }) {
           const clientFields = opened[idx];
           const isLocked = it.locked || (it.scheme === "client" && !clientFields);
           const fields = it.scheme === "client" ? clientFields : it.fields;
+          // A phantom-locked crypto phrase shows blurred until this guardian signs with Phantom.
+          const phantomBlur = it.phantomLock && !phantomUnlocked;
           return (
             <article key={idx} className="surface p-6 rise" style={{ animationDelay: `${Math.min(idx, 6) * 50}ms` }}>
               <div className="flex items-center gap-3.5 mb-4">
                 <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={19} style={{ color: it.platform && providerColor(it.platform) }} /></span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-ink truncate">{it.label}</p>
                   <p className="eyebrow mt-0.5">{it.platform || it.type}</p>
                 </div>
+                {it.phantomLock && (
+                  <span className={`pill shrink-0 ${phantomUnlocked ? "bg-sage/15 text-sage-600" : "bg-paper text-mist border border-line"}`}>
+                    {phantomUnlocked ? <><Check size={12} /> unlocked</> : <><Lock size={12} /> Phantom</>}
+                  </span>
+                )}
               </div>
               {isLocked ? (
                 <p className="text-xs text-mist flex items-center gap-1.5 bg-paper/70 rounded-xl px-3 py-2.5">
                   <Lock size={13} /> {needsUnlock ? "Encrypted - enter two recovery codes above to open." : "Encrypted - opens when two guardians combine their keys."}
                 </p>
+              ) : phantomBlur ? (
+                <div className="relative">
+                  <div className="space-y-2 blur-sm select-none pointer-events-none" aria-hidden="true">
+                    {Object.entries(fields || {}).map(([k, v]) => <Cred key={k} field={k} value={String(v)} />)}
+                  </div>
+                  <div className="absolute inset-0 grid place-items-center">
+                    <span className="pill bg-paper/90 text-graphite border border-line"><Lock size={12} /> Sign with Phantom to reveal</span>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {Object.entries(fields || {}).map(([k, v]) => <Cred key={k} field={k} value={String(v)} />)}
@@ -154,6 +179,85 @@ function AccountsSection({ items }) {
         })}
       </div>
     </>
+  );
+}
+
+// The Phantom gate for crypto recovery phrases. The guardian connects their wallet; only if the
+// connected address matches the one the owner saved for them does the Unlock button appear. A free
+// Phantom signMessage (no SOL, no transaction) then reveals the phrases - just like the owner intended.
+function PhantomUnlock({ guardianWallet, unlocked, onUnlock }) {
+  const [address, setAddress] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const hasSavedWallet = !!guardianWallet;
+  const matched = addressesMatch(address, guardianWallet);
+  // Mismatch only blocks when the owner actually saved an address for this guardian.
+  // If none was saved, any connected wallet may sign (so the demo never dead-ends).
+  const canUnlock = matched || !hasSavedWallet;
+
+  if (unlocked) {
+    return (
+      <div className="card !py-3 mb-5 flex items-center gap-2 text-sm text-sage-600">
+        <ShieldCheck size={16} /> Unlocked with your Phantom wallet. The signature stayed in your browser.
+      </div>
+    );
+  }
+
+  const connect = async () => {
+    setErr(""); setBusy(true);
+    try { setAddress(await connectPhantom()); }
+    catch (e) { setErr(e.message || "Couldn't connect to Phantom."); }
+    finally { setBusy(false); }
+  };
+
+  const unlock = async () => {
+    setErr(""); setBusy(true);
+    try {
+      await signPhantomMessage(`LastLogin: unlock the recovery phrases left in my care.\nWallet: ${address}`);
+      onUnlock();
+    } catch (e) {
+      setErr(e.message?.includes("User rejected") ? "You declined the signature." : (e.message || "Signing failed."));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="card mb-5">
+      <div className="flex items-center gap-2 mb-2">
+        <Wallet size={17} className="text-ember" />
+        <h3 className="font-display text-h">Unlock crypto recovery phrases</h3>
+      </div>
+      <p className="text-sm text-mist mb-4">
+        These were sealed to your Phantom wallet. Connect it, then sign once - it's free, no transaction -
+        to reveal them. Only the wallet the owner named for you can open these.
+      </p>
+
+      {!address ? (
+        <button className="btn-primary btn-sm" onClick={connect} disabled={busy || !hasPhantom()}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <><Wallet size={14} /> Connect Phantom wallet</>}
+        </button>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 mb-3 text-xs">
+            <span className="pill bg-paper text-mist border border-line mono"><Wallet size={12} /> {address.slice(0, 4)}…{address.slice(-4)}</span>
+            {matched
+              ? <span className="pill bg-sage/15 text-sage-600"><Check size={12} /> matches your guardian wallet</span>
+              : hasSavedWallet
+                ? <span className="pill bg-ember/12 text-ember"><Lock size={12} /> doesn't match the saved wallet</span>
+                : <span className="pill bg-paper text-mist border border-line"><Wallet size={12} /> connected</span>}
+          </div>
+          {canUnlock ? (
+            <button className="btn-primary btn-sm" onClick={unlock} disabled={busy}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <><Fingerprint size={14} /> Unlock - sign with Phantom</>}
+            </button>
+          ) : (
+            <p className="text-xs text-mist">Connect the exact wallet the owner saved for you to continue.</p>
+          )}
+        </>
+      )}
+      {!hasPhantom() && !address && <p className="text-xs text-mist mt-2">Phantom wallet extension not detected - install it to unlock these.</p>}
+      {err && <p className="text-sm text-ember mt-3">{err}</p>}
+    </div>
   );
 }
 

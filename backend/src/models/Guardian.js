@@ -6,7 +6,7 @@ const guardianSchema = new mongoose.Schema(
     name: String,
     email: String,
     phone: String,
-    walletAddress: String, // optional - confirms on-chain if present
+    walletAddress: String, // guardian's Phantom (Solana) address - must match to unlock granted crypto recovery phrases
     access: { type: [String], default: [] }, // legacy category RBAC (superseded by assetAccess)
     // Per-guardian, per-asset grants - completely isolated between guardians.
     assetAccess: { type: [mongoose.Schema.Types.ObjectId], ref: "VaultItem", default: [] },

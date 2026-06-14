@@ -1,0 +1,44 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LastLogin">
+  <!--
+    LastLogin mark - 1:1.
+    The candle flame, the product's signature. Geometry matches components/ui/Candle.jsx so
+    the logo and the in-app heartbeat read as the same object. Warm, calm, reverent - no alarm reds.
+  -->
+  <defs>
+    <linearGradient id="ll-flame-outer" x1="256" y1="56" x2="256" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0904A"/>
+      <stop offset="1" stop-color="#C8743A"/>
+    </linearGradient>
+    <linearGradient id="ll-flame-inner" x1="256" y1="120" x2="256" y2="268" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBD089"/>
+      <stop offset="1" stop-color="#F2B66B"/>
+    </linearGradient>
+    <radialGradient id="ll-glow" cx="0.5" cy="0.40" r="0.55">
+      <stop stop-color="#C8743A" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#C8743A" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="ll-soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+  </defs>
+
+  <!-- paper tile + hairline, the brand's calm canvas -->
+  <rect width="512" height="512" rx="116" fill="#FBF7F0"/>
+  <rect x="5" y="5" width="502" height="502" rx="111" fill="none" stroke="#E7E0D4" stroke-width="2"/>
+
+  <!-- warm halo behind the flame -->
+  <rect width="512" height="512" rx="116" fill="url(#ll-glow)"/>
+
+  <!-- candle, scaled 4x from the 64x90 Candle artwork and centered -->
+  <g transform="translate(128 74) scale(4)">
+    <!-- soft flame glow -->
+    <path d="M32 4 C40 16 46 22 46 34 a14 14 0 0 1 -28 0 C18 22 24 16 32 4 Z" fill="#C8743A" opacity="0.45" filter="url(#ll-soft)"/>
+    <!-- flame -->
+    <path d="M32 4 C40 16 46 22 46 34 a14 14 0 0 1 -28 0 C18 22 24 16 32 4 Z" fill="url(#ll-flame-outer)"/>
+    <path d="M32 16 C37 24 40 28 40 35 a8 8 0 0 1 -16 0 C24 28 27 24 32 16 Z" fill="url(#ll-flame-inner)"/>
+    <!-- wick -->
+    <rect x="30" y="46" width="4" height="8" rx="2" fill="#5A554E"/>
+    <!-- candle body -->
+    <rect x="22" y="50" width="20" height="36" rx="4" fill="#FFFFFF" stroke="#E7E0D4" stroke-width="1.5"/>
+  </g>
+</svg>

@@ -94,9 +94,10 @@ export default function Guardians() {
           <input className="field mb-3" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="they@example.com" />
           <label className="label flex items-center gap-1.5"><Phone size={12} /> Phone number</label>
           <input className="field mb-3" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91…" />
-          <label className="label flex items-center gap-1.5"><Wallet size={12} /> Ethereum wallet address <span className="text-mist font-body">· optional</span></label>
-          <input className="field mb-4 mono text-xs" value={form.walletAddress}
-            onChange={(e) => setForm({ ...form, walletAddress: e.target.value })} placeholder="0x…" />
+          <label className="label flex items-center gap-1.5"><Wallet size={12} /> Phantom wallet address <span className="text-mist font-body">· for crypto recovery</span></label>
+          <input className="field mb-1.5 mono text-xs" value={form.walletAddress}
+            onChange={(e) => setForm({ ...form, walletAddress: e.target.value })} placeholder="Solana address, e.g. 7xKX…gAsU" />
+          <p className="text-xs text-mist mb-4 leading-snug">Only this wallet can unlock the crypto recovery phrases you grant {form.name?.trim() || "this guardian"} - they sign with Phantom to reveal them.</p>
           <button className="btn-primary w-full" onClick={add} disabled={saving || !form.name.trim()}>{saving ? "Adding…" : "Add guardian"}</button>
         </div>
 

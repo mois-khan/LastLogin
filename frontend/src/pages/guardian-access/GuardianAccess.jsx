@@ -205,6 +205,7 @@ export default function GuardianAccess() {
                   messages={state.messages}
                   items={state.items}
                   files={state.files}
+                  guardianWallet={state.guardianWallet}
                 />
               </div>
               {/* Desktop: the clone chat, docked like an IDE side panel - always present. */}

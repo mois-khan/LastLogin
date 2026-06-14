@@ -42,7 +42,7 @@ export default function GuardianPortal() {
           ) : (
             <>
               <p className="text-mist mb-8">Everything they left for you.</p>
-              <GuardianGrantView name={data.name} messages={data.messages} items={data.items} files={data.files} />
+              <GuardianGrantView name={data.name} messages={data.messages} items={data.items} files={data.files} guardianWallet={data.guardianWallet} />
             </>
           )}
         </div>

@@ -45,12 +45,15 @@ async function guardianGrants(g, user) {
       try {
         const raw = decrypt(i.blob);
         let fields; try { fields = JSON.parse(raw); } catch { fields = { value: raw }; }
-        return { type: i.type, label: i.label, platform: i.platform, fields };
+        // Crypto recovery phrases get an extra gate: the guardian must unlock them by signing
+        // with the Phantom wallet the owner saved for them (phantomLock + their saved address).
+        return { type: i.type, label: i.label, platform: i.platform, fields, phantomLock: i.type === "crypto" };
       } catch { return { type: i.type, label: i.label, platform: i.platform, locked: true }; }
     }
     // Zero-knowledge item: the server cannot open it. Hand the guardian the ciphertext so the
     // browser can decrypt it AFTER two guardians combine their recovery codes to rebuild the DEK.
-    return { type: i.type, label: i.label, platform: i.platform, scheme: "client", cipher: { iv: i.blob?.iv, data: i.blob?.data } };
+    // Crypto phrases still get the extra Phantom gate AFTER that browser-side decryption.
+    return { type: i.type, label: i.label, platform: i.platform, scheme: "client", cipher: { iv: i.blob?.iv, data: i.blob?.data }, phantomLock: i.type === "crypto" };
   });
   const gf = await Attachment.find({ _id: { $in: g.fileAccess || [] }, userId: g.userId, disposition: "transfer" });
   const files = gf.map((f) => ({ id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, dataUrl: f.dataUrl }));
@@ -59,7 +62,8 @@ async function guardianGrants(g, user) {
   const messages = (await Message.find({ userId: g.userId, delivered: true }))
     .filter((m) => m.scope === "global" || msgRecipients(m).includes(ge))
     .map((m) => ({ id: m._id, recipientName: m.recipientName, text: m.text, audioUrl: m.audioUrl, language: m.language, scope: m.scope }));
-  return { items, files, messages };
+  // The guardian's saved Phantom address - the unlock gate matches the connected wallet against this.
+  return { items, files, messages, guardianWallet: g.walletAddress || "" };
 }
 
 // Recipients of a message (new array; falls back to the legacy single field), lowercased.
