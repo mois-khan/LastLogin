@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Send, Loader2, Check, Trash2, FileText, Globe, Banknote } from "lucide-react";
 import { api } from "../../lib/api.js";
-import { providerIcon } from "../../lib/providers.js";
+import { providerIcon, providerColor } from "../../lib/providers.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const PRESETS = [
@@ -49,6 +49,7 @@ const markFor = (name, category) => {
   if (k) return providerIcon(k);
   return /bank|financ|pay|money/.test(category || "") ? Banknote : Globe;
 };
+const markColor = (name) => providerColor(KEY_BY_NAME[(name || "").toLowerCase().replace(/[^a-z]/g, "")]);
 
 export default function Executor() {
   const { user } = useAuth();
@@ -101,7 +102,7 @@ export default function Executor() {
               <button key={p.domain} disabled={taken.has(p.domain)}
                 onClick={() => add({ platform: p.platform, domain: p.domain, category: p.category, action: "delete" })}
                 className="chip flex-col gap-1.5 py-3 border-line hover:border-ember disabled:opacity-30 disabled:cursor-not-allowed">
-                <Icon size={20} className="text-ink" />
+                <Icon size={20} className="text-ink" style={{ color: markColor(p.platform) }} />
                 <span className="text-xs">{p.platform}</span>
               </button>
             ); })}
@@ -133,7 +134,7 @@ export default function Executor() {
                 return (
                 <div key={a._id} className="card card-hover">
                   <div className="flex items-center gap-3">
-                    <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={18} /></span>
+                    <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={18} style={{ color: markColor(a.platform) }} /></span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{a.platform}</div>
                       <div className="text-xs text-mist truncate">{a.domain}</div>

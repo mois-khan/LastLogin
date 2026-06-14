@@ -3,9 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0A0A0E" />
+    <meta name="theme-color" content="#FFFFFF" />
     <title>LastLogin</title>
-    <style>html,body{background:#0A0A0E;margin:0}</style>
+    <style>html{background:#FFFFFF}html.dark{background:#0A0A0E}body{margin:0}</style>
+    <script>
+      /* Apply the saved theme before first paint — no flash. Light is the default. */
+      try {
+        if (localStorage.getItem("ll_theme") === "dark") {
+          document.documentElement.classList.add("dark");
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute("content", "#0A0A0E");
+        }
+      } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />

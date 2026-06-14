@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip, AudioLines, KeyRound } from "lucide-react";
-import { providerIcon } from "../lib/providers.js";
+import { providerIcon, providerColor } from "../lib/providers.js";
 import AudioPlayer from "./ui/AudioPlayer.jsx";
 import Candle from "./ui/Candle.jsx";
 
@@ -114,7 +114,7 @@ function AccountsSection({ items }) {
           return (
             <article key={idx} className="surface p-6 rise" style={{ animationDelay: `${Math.min(idx, 6) * 50}ms` }}>
               <div className="flex items-center gap-3.5 mb-4">
-                <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={19} /></span>
+                <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={19} style={{ color: it.platform && providerColor(it.platform) }} /></span>
                 <div className="min-w-0">
                   <p className="font-medium text-ink truncate">{it.label}</p>
                   <p className="eyebrow mt-0.5">{it.platform || it.type}</p>

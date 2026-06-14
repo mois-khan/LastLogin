@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import ThemeToggle from "../ui/ThemeToggle.jsx";
 
 const links = [
   { to: "/app/assistant", label: "Guide", Icon: Sparkles },
@@ -37,6 +38,7 @@ export default function Shell() {
           </nav>
 
           <div className="flex items-center gap-3 pl-2">
+            <ThemeToggle />
             <span className="hidden md:block text-sm text-graphite max-w-[10rem] truncate">{user?.name || user?.email}</span>
             <button onClick={() => { logout(); nav("/"); }}
               className="btn-ghost btn-sm" title="Sign out">
