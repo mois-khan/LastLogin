@@ -193,7 +193,7 @@ export default function GuardianAccess() {
                   loadHistory={() => api.post("/clone/history", { token: state.token }).then((r) => r.data)}
                   clearHistory={() => api.post("/clone/history/clear", { token: state.token })}
                   uploadContext={(file) => { const fd = new FormData(); fd.append("chat", file); fd.append("token", state.token); return api.post("/clone/guardian-context", fd).then((r) => r.data); }}
-                  transcribe={(blob, language) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); fd.append("language", language); fd.append("token", state.token); return api.post("/clone/transcribe", fd).then((r) => r.data.text); }} />
+                  transcribe={(blob) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); fd.append("token", state.token); return api.post("/clone/transcribe", fd).then((r) => r.data); }} />
               ) }}
             />
           ) : youConfirmed ? (

@@ -65,8 +65,14 @@ function extractChat(file) {
 r.post("/transcribe", upload.single("audio"), anyAuth, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No audio." });
-    const text = await sarvam.stt(req.file.buffer, req.body.language || "unknown", req.file.originalname || "audio.wav");
-    res.json({ text });
+    const { transcript, language } = await sarvam.stt(req.file.buffer, req.body.language || "unknown", req.file.originalname || "audio.wav");
+    let text = transcript;
+    // Show the transcript in Roman/Latin letters (transliteration) — clearer for everyone to read.
+    const nonAscii = [...(text || "")].some((c) => c.charCodeAt(0) > 127);
+    if (text && language && !String(language).startsWith("en") && nonAscii) {
+      text = await clone.romanize(text, language);
+    }
+    res.json({ text, language: language || "auto" });
   } catch (e) {
     res.json({ text: "", error: e.response?.data?.message || e.message });
   }
@@ -121,7 +127,7 @@ r.post("/owner-chats", auth, upload.array("chats", 6), async (req, res, next) =>
 // Owner previews their OWN clone while alive.
 r.post("/preview", auth, async (req, res, next) => {
   try {
-    const { message, language = "en-IN", withAudio } = req.body;
+    const { message, language = "auto", withAudio } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: "Say something first." });
     const [p, u] = await Promise.all([
       Persona.findOne({ userId: req.user.id }),
@@ -132,7 +138,7 @@ r.post("/preview", auth, async (req, res, next) => {
     await CloneMessage.create({ userId: req.user.id, ownerPreview: true, role: "guardian", text: message, language });
     const { text, audio } = await clone.cloneReply({
       name: u?.name || "I", gender: u?.gender, personaPrompt: p.personaPrompt, history,
-      message, targetLang: language, voiceId: u?.voiceId, withAudio: !!withAudio,
+      message, language, voiceId: u?.voiceId, withAudio: !!withAudio,
       secrets: await ownerSecrets(req.user.id),
     });
     const audioUrl = toUrl(audio);
@@ -177,7 +183,7 @@ r.post("/guardian-context", upload.single("chat"), guardianAuth, async (req, res
 r.post("/chat", guardianAuth, async (req, res, next) => {
   try {
     const { userId, gid } = req.guardian;
-    const { message, language = "en-IN", withAudio } = req.body;
+    const { message, language = "auto", withAudio } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: "Say something first." });
     const u = await ensureExecuting(userId, res); if (!u) return;
     const [p, ctx] = await Promise.all([
@@ -188,7 +194,7 @@ r.post("/chat", guardianAuth, async (req, res, next) => {
     await CloneMessage.create({ userId, guardianId: gid, role: "guardian", text: message, language });
     const { text, audio } = await clone.cloneReply({
       name: u.name || "they", gender: u.gender, personaPrompt: p?.personaPrompt, guardianContext: ctx?.summary,
-      history, message, targetLang: language, voiceId: u.voiceId, withAudio: !!withAudio,
+      history, message, language, voiceId: u.voiceId, withAudio: !!withAudio,
       secrets: await ownerSecrets(userId),
     });
     const audioUrl = toUrl(audio);

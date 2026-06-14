@@ -3,21 +3,12 @@ import { Send, Loader2, Mic, Square, Trash2, Upload, ShieldCheck, Sparkles, Chec
 import AudioPlayer from "./ui/AudioPlayer.jsx";
 import { startRecording } from "../lib/audio.js";
 
-const LANGS = [
-  { code: "en-IN", label: "English" },
-  { code: "hi-IN", label: "Hindi" },
-  { code: "ta-IN", label: "Tamil" },
-  { code: "te-IN", label: "Telugu" },
-  { code: "mr-IN", label: "Marathi" },
-];
-
-// Chat + talk with a persona. Pure UI; the parent wires the endpoints (owner preview vs
-// guardian session). sendMessage(text, language, withAudio) -> { text, audioUrl }.
-// transcribe(wavBlob, language) -> string (Sarvam STT). uploadContext(file) -> { summary }.
+// Chat + talk with a persona. The clone replies in the SAME language the person uses; spoken
+// input is transcribed (shown in Roman letters). Pure UI; the parent wires the endpoints.
+// sendMessage(text, language, withAudio) -> { text, audioUrl }. transcribe(wavBlob) -> { text, language }.
 export default function CloneChat({ name = "them", sendMessage, loadHistory, clearHistory, uploadContext, transcribe }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [language, setLanguage] = useState("en-IN");
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState("idle"); // idle | rec | stt
   const [ctx, setCtx] = useState(null); // { busy, done, summary, error }
@@ -28,14 +19,14 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
   useEffect(() => { loadHistory?.().then((h) => setMessages(h?.messages || h || [])).catch(() => {}); }, []);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [messages, busy]);
 
-  const send = async (text, withAudio) => {
+  const send = async (text, withAudio, lang) => {
     const msg = (text ?? input).trim();
     if (!msg || busy) return;
     setInput("");
     setMessages((m) => [...m, { role: "guardian", text: msg }]);
     setBusy(true);
     try {
-      const reply = await sendMessage(msg, language, !!withAudio);
+      const reply = await sendMessage(msg, lang || "auto", !!withAudio);
       setMessages((m) => [...m, { role: "clone", text: reply.text, audioUrl: reply.audioUrl }]);
     } catch {
       setMessages((m) => [...m, { role: "clone", text: "I'm having a quiet moment — try me again in a second.", error: true }]);
@@ -48,8 +39,9 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
       setPhase("stt");
       try {
         const wav = await recRef.current.stop();
-        const text = transcribe ? await transcribe(wav, language) : "";
-        if (text && text.trim()) await send(text, true);
+        const r = transcribe ? await transcribe(wav) : null;
+        const said = (r && (r.text ?? r)) || "";
+        if (said && said.trim()) await send(said, true, r?.language || "auto");
       } catch { /* ignore */ } finally { setPhase("idle"); recRef.current = null; }
       return;
     }
@@ -120,10 +112,7 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <select className="field !w-auto !py-2 text-xs shrink-0" value={language} onChange={(e) => setLanguage(e.target.value)}>
-          {LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-        </select>
-        <input className="field" placeholder={phase === "rec" ? "Listening…" : `Talk to ${name}…`} value={input}
+        <input className="field" placeholder={phase === "rec" ? "Listening…" : `Talk to ${name} — type or speak, any language…`} value={input}
           onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
         <button onClick={talk} disabled={busy || phase === "stt"} title="Speak"
           className={`grid place-items-center h-10 w-10 rounded-full shrink-0 transition ${phase === "rec" ? "bg-ember text-white animate-pulse" : "btn-secondary"}`}>

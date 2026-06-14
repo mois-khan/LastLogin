@@ -37,7 +37,7 @@ export async function stt(buffer, language = "unknown", filename = "audio.wav") 
   const { data } = await axios.post(`${BASE}/speech-to-text`, form, {
     headers: { ...form.getHeaders(), "api-subscription-key": k },
   });
-  return data.transcript || "";
+  return { transcript: data.transcript || "", language: data.language_code || null };
 }
 
 /** Native Indian-language speech via Bulbul (returns base64 wav). Optional alternative voice. */

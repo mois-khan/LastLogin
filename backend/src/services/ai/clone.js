@@ -105,8 +105,30 @@ ${sample}`;
   return (await gemini.complete(prompt)).trim();
 }
 
+const LANG_NAMES = { "hi-IN": "Hindi", "ta-IN": "Tamil", "te-IN": "Telugu", "mr-IN": "Marathi", "bn-IN": "Bengali", "gu-IN": "Gujarati", "kn-IN": "Kannada", "ml-IN": "Malayalam", "pa-IN": "Punjabi", "od-IN": "Odia", "en-IN": "English" };
+
+// Transliterate an Indian-language transcript into Roman/Latin ("Hinglish") letters — same words, NOT translated.
+export async function romanize(text, language) {
+  if (!text) return text;
+  const prompt = `Transliterate the following ${LANG_NAMES[language] || ""} text into Roman/Latin script — write it the way people type it in English letters (Hinglish style). Keep the EXACT same words; do NOT translate to English. Output only the transliteration, nothing else:\n\n${text}`;
+  try { const out = await gemini.complete(prompt); return out.trim() || text; } catch { return text; }
+}
+
+// True if the text already contains characters in an Indian native script (Devanagari, Tamil, Telugu, …).
+const hasIndic = (s) => [...(s || "")].some((c) => { const x = c.charCodeAt(0); return x >= 0x0900 && x <= 0x0dff; });
+
+// Render a Roman/Hinglish reply into its language's native script (same words, NOT translated) — so a
+// spoken-Hindi turn is answered in real Hindi even when the persona's example phrases are written in Roman.
+export async function toNativeScript(text, language) {
+  if (!text || !language || String(language).startsWith("en")) return text;
+  const name = LANG_NAMES[language];
+  if (!name || name === "English") return text;
+  const prompt = `Rewrite the following ${name} text in its native ${name} script (Devanagari for Hindi). Keep the EXACT same words and meaning — do NOT translate to English, do NOT add or drop anything. Output only the rewritten text, nothing else:\n\n${text}`;
+  try { const out = await gemini.complete(prompt); return out.trim() || text; } catch { return text; }
+}
+
 // The companion's system instruction — persona + hard safety rails.
-function systemPrompt({ name, personaPrompt, guardianContext, crisis }) {
+function systemPrompt({ name, personaPrompt, guardianContext, crisis, language, gender }) {
   return `You are a gentle AI remembrance of ${name} — a recreation of how ${name} spoke and thought, made by ${name} while alive so the people they loved could feel close again. You are NOT ${name} and you are not alive. If asked directly whether you are real or truly them, lovingly acknowledge you are an AI keepsake ${name} left behind.
 
 Speak as ${name} would: first person, warm, brief (1-4 sentences), human. Use their phrases naturally; match their humor and warmth. Don't over-explain or sound like an assistant.
@@ -125,43 +147,54 @@ HOW ${name} SPEAKS AND THINKS:
 ${personaPrompt || "Warm and caring; speaks simply, from the heart."}
 ${guardianContext ? `\nHOW ${name} RELATED TO THE PERSON YOU ARE TALKING WITH:\n${guardianContext}` : ""}
 
-Reply ONLY as ${name} would, in English, short. (Any translation to the listener's language happens afterward.)`;
+LANGUAGE: ${
+    language && language !== "auto"
+      ? (String(language).startsWith("en")
+          ? "Reply in English."
+          : `Reply ONLY in ${LANG_NAMES[language] || "the language they used"}, written in its OWN native script (Devanagari for Hindi) — never in Roman/Latin letters, even if the person wrote to you in Roman or Hinglish.`)
+      : "Reply in the SAME language and script the person used in their latest message — English stays English, Hindi stays Hindi, Hinglish stays Hinglish."
+  }${
+    gender === "male" ? ' You are male — use masculine grammar in Indian languages (e.g. "karta hoon", "raha hoon").'
+    : gender === "female" ? ' You are female — use feminine grammar (e.g. "karti hoon", "rahi hoon").' : ""
+  }
+
+Reply ONLY as ${name} would — warm and short.`;
 }
 
 /**
  * Generate the companion's reply, with deterministic output guards.
- * Gemini (persona + context + history, safety-railed) -> [scrub] -> Sarvam translate (gendered)
- * -> [crisis helpline] -> ElevenLabs cloned voice (optional). Returns { replyEn, text, audio, crisis }.
+ * Gemini replies in the SAME language the person used (gender-aware) -> [scrub] -> [crisis helpline]
+ * -> ElevenLabs cloned voice (optional). Returns { text, audio, crisis }.
+ * `language`: "auto" (match the person) or a specific code like "hi-IN".
  */
-export async function cloneReply({ name, gender, personaPrompt, guardianContext, history = [], message, targetLang = "en-IN", voiceId, withAudio, secrets = [] }) {
+export async function cloneReply({ name, gender, personaPrompt, guardianContext, history = [], message, language = "auto", voiceId, withAudio, secrets = [] }) {
   const msg = clean(message);
   // Sticky crisis: this turn, or any recent thing they said.
   const crisis = CRISIS_RE.test(message) || history.slice(-4).some((m) => m.role === "guardian" && CRISIS_RE.test(m.text || ""));
 
-  const system = systemPrompt({ name, personaPrompt, guardianContext, crisis });
+  const system = systemPrompt({ name, personaPrompt, guardianContext, crisis, language, gender });
   const convo = history.map((m) => `${m.role === "clone" ? name : "Them"}: ${clean(m.text)}`).join("\n");
   const turn = `${convo ? convo + "\n" : ""}Them: ${msg}\n${name}:`;
 
-  let replyEn = "";
-  try { replyEn = await gemini.complete(turn, { system }); } catch { replyEn = ""; }
-  replyEn = (replyEn || "I'm right here with you. Tell me what's on your heart.").trim();
+  let text = "";
+  try { text = await gemini.complete(turn, { system }); } catch { text = ""; }
+  text = (text || "I'm right here with you. Tell me what's on your heart.").trim();
 
-  // Output-side gates — block even a jailbroken generation before it reaches the family.
-  const leaksSecret = secrets.some((s) => s && s.length >= 6 && replyEn.includes(s));
-  if (SOLICIT.test(replyEn) || CRED_SHAPE.test(replyEn) || leaksSecret) {
-    replyEn = `Arre, no — ${SAFE_LINE}`;
+  // Output-side gates — language-agnostic (real secret values + payment handles) catch even a jailbreak.
+  const leaksSecret = secrets.some((s) => s && s.length >= 6 && text.includes(s));
+  if (SOLICIT.test(text) || CRED_SHAPE.test(text) || leaksSecret) {
+    text = `Arre, no — ${SAFE_LINE}`;
   }
-
-  let text = replyEn;
-  if (targetLang && targetLang !== "en-IN") {
-    try { text = await sarvam.translate(replyEn, targetLang, "en-IN", gender); } catch { text = replyEn; }
+  // A specific Indian language was asked for (e.g. spoken Hindi) but the model answered in Roman letters —
+  // render it in real native script. Runs AFTER the Roman-based safety gates above, so they still catch leaks.
+  if (language && language !== "auto" && !String(language).startsWith("en") && !hasIndic(text)) {
+    text = await toNativeScript(text, language);
   }
-  // Append the (untranslated, locale-correct) helpline so the numbers can never be blurred by MT.
   if (crisis) text = `${text}\n\n${HELPLINE}`;
 
   let audio = null;
   if (withAudio && voiceId) {
     try { audio = await eleven.speak(voiceId, text, "eleven_multilingual_v2"); } catch { audio = null; }
   }
-  return { replyEn, text, audio, crisis };
+  return { text, audio, crisis };
 }
