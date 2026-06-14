@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "seed": "node src/scripts/seed-demo.js"
+    "seed": "node src/scripts/seed-demo.js",
+    "db:drop": "node src/scripts/drop-db.js"
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
