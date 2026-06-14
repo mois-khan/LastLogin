@@ -5,24 +5,24 @@
 /* ── Theme tokens. Light is the default; `.dark` on <html> flips everything. ── */
 :root {
   color-scheme: light;
-  --paper: 255 255 255;
-  --cloud: 245 245 247;
-  --card: 255 255 255;
-  --ink: 29 29 31;
-  --graphite: 81 81 84;
-  --mist: 134 134 139;
-  --line: 224 224 228;
-  --ember: 194 106 44;
-  --ember-600: 168 90 36;
-  --sage: 70 120 90;
-  --sage-600: 56 100 74;
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.03), 0 12px 28px -14px rgba(0,0,0,0.10);
-  --shadow-lift: 0 2px 8px rgba(0,0,0,0.05), 0 30px 60px -28px rgba(0,0,0,0.16);
-  --shadow-glow: 0 6px 22px -6px rgba(194,106,44,0.40);
-  --bg: radial-gradient(1200px 660px at 50% -16%, rgba(194,106,44,0.05), transparent 60%), #FFFFFF;
-  --candle-fill: #EFEBE4;
-  --candle-stroke: #D2CDC3;
-  --flame-glow: drop-shadow(0 0 6px rgba(194,106,44,0.30));
+  --paper: 240 240 244;  /* soft gray canvas — white cards float on it */
+  --cloud: 243 243 246;  /* recessed fields/wells inside white cards */
+  --card: 255 255 255;   /* white cards, lifted by shadow */
+  --ink: 23 23 27;       /* near-black, for bold type */
+  --graphite: 74 74 82;
+  --mist: 122 122 132;
+  --line: 223 223 229;
+  --ember: 193 104 42;
+  --ember-600: 166 86 33;
+  --sage: 52 134 96;
+  --sage-600: 42 112 80;
+  --shadow-card: 0 1px 2px rgba(17,17,26,0.04), 0 10px 30px -12px rgba(17,17,26,0.10);
+  --shadow-lift: 0 4px 14px rgba(17,17,26,0.07), 0 34px 64px -26px rgba(17,17,26,0.18);
+  --shadow-glow: 0 8px 26px -8px rgba(193,104,42,0.45);
+  --bg: radial-gradient(1100px 620px at 50% -14%, rgba(193,104,42,0.05), transparent 58%), #F0F0F4;
+  --candle-fill: #FCFBF8;
+  --candle-stroke: #D8D3CA;
+  --flame-glow: drop-shadow(0 0 7px rgba(193,104,42,0.32));
 }
 html.dark {
   color-scheme: dark;
@@ -80,7 +80,7 @@ h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; colo
   .btn-sm { @apply px-3.5 py-1.5 text-[13px]; }
   .btn-ember { @apply btn-primary; }
 
-  .field { @apply w-full rounded-xl border border-line bg-cloud px-4 py-3 text-sm text-ink transition placeholder:text-mist/60 focus:border-ember focus:shadow-focus focus:bg-card; }
+  .field { @apply w-full rounded-xl border border-line bg-cloud px-4 py-3 text-sm text-ink transition placeholder:text-mist/80 focus:border-ember focus:shadow-focus focus:bg-card; }
   .label { @apply block text-xs font-medium uppercase tracking-[0.08em] text-mist mb-1.5; }
   .eyebrow { @apply text-[0.7rem] font-medium uppercase tracking-[0.16em] text-mist; }
 

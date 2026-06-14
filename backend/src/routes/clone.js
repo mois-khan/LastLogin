@@ -84,7 +84,8 @@ r.get("/persona", auth, async (req, res, next) => {
     ]);
     res.json({
       ready: !!p?.ready, answers: p?.answers || {}, keyPhrases: p?.keyPhrases || [],
-      personaPrompt: p?.personaPrompt || "", gender: u?.gender || "neutral", hasVoice: !!u?.voiceId, name: u?.name,
+      personaPrompt: p?.personaPrompt || "", behaviour: p?.behaviour || null, hasChats: !!p?.chatSummary,
+      gender: u?.gender || "neutral", hasVoice: !!u?.voiceId, name: u?.name,
     });
   } catch (e) { next(e); }
 });
@@ -92,12 +93,28 @@ r.get("/persona", auth, async (req, res, next) => {
 r.post("/persona", auth, async (req, res, next) => {
   try {
     const answers = req.body.answers || {};
-    const u = await User.findById(req.user.id).select("name");
-    const { personaPrompt, keyPhrases } = await clone.buildPersonaPrompt(answers, u?.name || "this person");
+    const [u, existing] = await Promise.all([
+      User.findById(req.user.id).select("name"),
+      Persona.findOne({ userId: req.user.id }).select("chatSummary"),
+    ]);
+    const { personaPrompt, keyPhrases, behaviour } = await clone.buildPersona(answers, existing?.chatSummary, u?.name || "this person");
     const p = await Persona.findOneAndUpdate(
-      { userId: req.user.id }, { answers, personaPrompt, keyPhrases, ready: true }, { upsert: true, new: true }
+      { userId: req.user.id }, { answers, personaPrompt, keyPhrases, behaviour, ready: true }, { upsert: true, new: true }
     );
-    res.json({ ready: p.ready, personaPrompt: p.personaPrompt, keyPhrases: p.keyPhrases });
+    res.json({ ready: p.ready, personaPrompt: p.personaPrompt, keyPhrases: p.keyPhrases, behaviour: p.behaviour });
+  } catch (e) { next(e); }
+});
+
+// Owner uploads their OWN exported chats -> a private summary of how they write, feeding the persona.
+r.post("/owner-chats", auth, upload.array("chats", 6), async (req, res, next) => {
+  try {
+    const texts = (req.files || []).map(extractChat).filter((t) => t && t.trim());
+    if (!texts.length && req.body.text) texts.push(req.body.text);
+    if (!texts.length) return res.status(400).json({ error: "Upload your exported chat — a .txt or .zip (Export chat → Without media)." });
+    const u = await User.findById(req.user.id).select("name");
+    const summary = await clone.summarizeOwnerChats(texts.join("\n\n---\n\n"), u?.name || "you");
+    await Persona.findOneAndUpdate({ userId: req.user.id }, { chatSummary: summary }, { upsert: true });
+    res.json({ ok: true, summary });
   } catch (e) { next(e); }
 });
 

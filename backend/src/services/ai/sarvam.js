@@ -32,7 +32,7 @@ export async function stt(buffer, language = "unknown", filename = "audio.wav") 
   if (!k) throw new Error("SARVAM_API_KEY missing — get it at https://dashboard.sarvam.ai");
   const form = new FormData();
   form.append("file", buffer, { filename, contentType: "audio/wav" });
-  form.append("model", "saarika:v2");
+  form.append("model", "saarika:v2.5"); // v2 is deprecated
   form.append("language_code", language || "unknown"); // "unknown" lets Saarika auto-detect
   const { data } = await axios.post(`${BASE}/speech-to-text`, form, {
     headers: { ...form.getHeaders(), "api-subscription-key": k },
