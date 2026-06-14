@@ -47,6 +47,7 @@ export default function GuardianAccess() {
   const [busy, setBusy] = useState(false);
   const [verifying, setVerifying] = useState(false); // cert verification in flight
   const [certReason, setCertReason] = useState(""); // last rejection reason
+  const [talkOpen, setTalkOpen] = useState(false); // mobile: clone-chat slide-over open
 
   // Counts shown in the status bar prefer the live session, falling back to the lookup.
   const confirmed = state?.confirmedGuardians ?? estate?.confirmedGuardians ?? 0;
@@ -66,6 +67,7 @@ export default function GuardianAccess() {
     setBusy(false);
     setVerifying(false);
     setCertReason("");
+    setTalkOpen(false);
   };
 
   // STEP 1 - find the estate by the deceased's email or phone.
@@ -161,9 +163,23 @@ export default function GuardianAccess() {
   if (step === "portal" && state) {
     const executing = state.executing === true;
     const youConfirmed = state.youConfirmed === true;
+    const cloneName = state.ownerName || ownerName;
+    const firstName = cloneName.split(" ")[0] || "them";
+
+    // The companion chat, wired to the guardian session. The token travels in the request body -
+    // the api interceptor stamps the owner's token on the Authorization header, so a header won't reach.
+    const cloneChat = (extra = {}) => (
+      <CloneChat name={cloneName} dock {...extra}
+        sendMessage={(message, language, withAudio) => api.post("/clone/chat", { token: state.token, message, language, withAudio }).then((r) => r.data)}
+        loadHistory={() => api.post("/clone/history", { token: state.token }).then((r) => r.data)}
+        clearHistory={() => api.post("/clone/history/clear", { token: state.token })}
+        uploadContext={(file) => { const fd = new FormData(); fd.append("chat", file); fd.append("token", state.token); return api.post("/clone/guardian-context", fd).then((r) => r.data); }}
+        transcribe={(blob) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); fd.append("token", state.token); return api.post("/clone/transcribe", fd).then((r) => r.data); }} />
+    );
+
     return (
       <div className="min-h-screen">
-        <div className="mx-auto max-w-2xl px-6 py-16">
+        <div className={`mx-auto px-4 sm:px-6 py-12 lg:py-14 ${executing ? "max-w-6xl" : "max-w-2xl"}`}>
           <button
             onClick={reset}
             className="text-sm text-mist hover:text-ink flex items-center gap-1.5 mb-6"
@@ -182,20 +198,20 @@ export default function GuardianAccess() {
           <StatusBar confirmed={confirmed} total={total} threshold={threshold} />
 
           {executing ? (
-            <GuardianGrantView
-              name={state.guardianName}
-              messages={state.messages}
-              items={state.items}
-              files={state.files}
-              extraTab={{ key: "talk", label: "Talk", Icon: Sparkles, node: (
-                <CloneChat name={state.ownerName || ownerName}
-                  sendMessage={(message, language, withAudio) => api.post("/clone/chat", { token: state.token, message, language, withAudio }).then((r) => r.data)}
-                  loadHistory={() => api.post("/clone/history", { token: state.token }).then((r) => r.data)}
-                  clearHistory={() => api.post("/clone/history/clear", { token: state.token })}
-                  uploadContext={(file) => { const fd = new FormData(); fd.append("chat", file); fd.append("token", state.token); return api.post("/clone/guardian-context", fd).then((r) => r.data); }}
-                  transcribe={(blob) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); fd.append("token", state.token); return api.post("/clone/transcribe", fd).then((r) => r.data); }} />
-              ) }}
-            />
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-7 lg:items-start">
+              <div className="min-w-0">
+                <GuardianGrantView
+                  name={state.guardianName}
+                  messages={state.messages}
+                  items={state.items}
+                  files={state.files}
+                />
+              </div>
+              {/* Desktop: the clone chat, docked like an IDE side panel - always present. */}
+              <aside className="hidden lg:block lg:sticky lg:top-6">
+                <div className="h-[calc(100vh-7.5rem)]">{cloneChat()}</div>
+              </aside>
+            </div>
           ) : youConfirmed ? (
             // This guardian has already confirmed (via prior cert or upload this visit).
             <div className="card rise">
@@ -248,6 +264,25 @@ export default function GuardianAccess() {
             </div>
           )}
         </div>
+
+        {/* Mobile: a floating button opens the clone chat as a full-height sheet. */}
+        {executing && (
+          <>
+            <button
+              onClick={() => setTalkOpen(true)}
+              className="lg:hidden fixed bottom-5 right-5 z-40 btn-primary rounded-full h-14 pl-5 pr-6 text-[15px] shadow-glow"
+            >
+              <Sparkles size={18} /> Talk with {firstName}
+            </button>
+            {talkOpen && (
+              <div className="lg:hidden fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm" onClick={() => setTalkOpen(false)}>
+                <div className="absolute inset-x-0 bottom-0 top-10 sm:top-16 p-3 sheet-up" onClick={(e) => e.stopPropagation()}>
+                  <div className="h-full max-w-md mx-auto">{cloneChat({ onClose: () => setTalkOpen(false) })}</div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     );
   }
