@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
-import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight, MessageCircle, Heart } from "lucide-react";
+import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight, MessageCircle, Heart, Check, ExternalLink } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { api } from "../../lib/api.js";
 import ThemeToggle from "../ui/ThemeToggle.jsx";
@@ -12,15 +12,35 @@ const INACTIVE_DAYS = 7;
 function InactivityBanner() {
   const [days, setDays] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(null); // { txHash } once proof is recorded
   useEffect(() => {
     api.get("/proof-of-life/status").then(({ data }) => setDays(data.daysInactive)).catch(() => {});
   }, []);
-  if (days === null || days < INACTIVE_DAYS) return null;
   const stillHere = async () => {
     setBusy(true);
-    try { await api.post("/proof-of-life"); setDays(0); }
+    try { const { data } = await api.post("/proof-of-life"); setDays(0); setDone({ txHash: data.txHash }); }
     finally { setBusy(false); }
   };
+
+  // After confirming, show a calm acknowledgement - with the on-chain proof if it was recorded.
+  if (done) return (
+    <div className="border-b border-line bg-sage/10">
+      <div className="mx-auto max-w-content px-6 py-2.5 flex items-center justify-between gap-3 text-sm">
+        <span className="text-ink flex items-center gap-2">
+          <Check size={15} className="text-sage-600 shrink-0" strokeWidth={2.25} />
+          Thank you - your guardians can rest easy. The countdown is reset.
+        </span>
+        {done.txHash && (
+          <a href={`https://sepolia.etherscan.io/tx/${done.txHash}`} target="_blank" rel="noreferrer"
+            className="mono text-xs text-ember hover:underline inline-flex items-center gap-1.5 whitespace-nowrap">
+            Proof recorded on-chain <ExternalLink size={12} className="shrink-0" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+
+  if (days === null || days < INACTIVE_DAYS) return null;
   return (
     <div className="border-b border-line bg-ember/8">
       <div className="mx-auto max-w-content px-6 py-2.5 flex items-center justify-between gap-3 text-sm">

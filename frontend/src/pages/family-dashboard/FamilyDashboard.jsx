@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ExternalLink, ShieldCheck, Download } from "lucide-react";
+import { ExternalLink, ShieldCheck, Download, BadgeCheck } from "lucide-react";
 import { api } from "../../lib/api.js";
 import Candle from "../../components/ui/Candle.jsx";
 import AudioPlayer from "../../components/ui/AudioPlayer.jsx";
@@ -86,6 +86,12 @@ export default function FamilyDashboard() {
                 href={`https://sepolia.etherscan.io/tx/${data.executedTx}`} target="_blank" rel="noreferrer">
                 {data.executedTx} <ExternalLink size={13} className="shrink-0" />
               </a>
+              {data.certVerifiedAt && (
+                <div className="mt-4 pt-4 border-t border-line flex items-center gap-2 text-xs text-mist">
+                  <BadgeCheck size={14} className="text-sage-600 shrink-0" />
+                  <span>Verified via death certificate · {new Date(data.certVerifiedAt).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}</span>
+                </div>
+              )}
             </div>
           </section>
         )}

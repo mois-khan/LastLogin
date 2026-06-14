@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Mail, Loader2, Lock, Download, ArrowRight } from "lucide-react";
 import { api } from "../../lib/api.js";
+import AudioPlayer from "../../components/ui/AudioPlayer.jsx";
 
 // A chosen recipient verifies their email (OTP) to open the messages left for them.
 export default function Inbox() {
@@ -38,12 +39,12 @@ export default function Inbox() {
               <p className="text-lg leading-relaxed mb-3">{m.text}</p>
               {m.audioUrl && (
                 <>
-                  <audio controls src={m.audioUrl} className="w-full" />
+                  <AudioPlayer src={m.audioUrl} />
                   <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 mt-3 text-xs text-ember hover:underline"><Download size={13} /> Download</a>
                 </>
               )}
             </div>
-          )) : <p className="text-mist">No messages.</p>}
+          )) : <p className="text-mist">No messages were left for this address - but you were trusted enough to be given a way in.</p>}
         </div>
       </div>
     );
