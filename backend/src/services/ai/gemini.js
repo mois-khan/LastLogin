@@ -35,9 +35,9 @@ async function generate(parts, { json = false, system } = {}) {
   throw lastErr;
 }
 
-/** Generic single-turn completion with an optional system instruction. */
-export async function complete(prompt, { system } = {}) {
-  return (await generate([{ text: prompt }], { system })).trim();
+/** Generic single-turn completion with an optional system instruction (json: force JSON output). */
+export async function complete(prompt, { system, json } = {}) {
+  return (await generate([{ text: prompt }], { system, json })).trim();
 }
 
 const WILL_SYSTEM = `You are the LastLogin guide: a warm, calm companion helping someone

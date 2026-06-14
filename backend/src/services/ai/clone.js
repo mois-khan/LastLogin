@@ -56,6 +56,43 @@ ${qa || "(no answers given)"}`;
   return { personaPrompt, keyPhrases };
 }
 
+// Build the full persona + a human-readable behaviour card from answers (+ optional chat-style summary).
+export async function buildPersona(answers, chatSummary, name = "this person") {
+  const qa = QUESTIONS.map((q) => answers[q.k] && `Q: ${q.q}\nA: ${answers[q.k]}`).filter(Boolean).join("\n\n");
+  const ctx = chatSummary ? `\n\nAnd here is how ${name} actually writes/talks (from their own chats):\n${chatSummary}` : "";
+  const prompt = `From this person's own answers${chatSummary ? " and how they really chat" : ""}, build a profile of "${name}" for an AI that will speak AS them. Return ONLY valid JSON, no prose:
+{
+  "personaPrompt": "120-180 word second-person style guide — how ${name} speaks and thinks: tone, warmth, humor, values, how they comfort and advise, how they show love. Vivid, plain prose.",
+  "summary": "2-3 warm sentences capturing who ${name} is, written TO ${name} in second person.",
+  "tone": "4-7 words describing their voice, e.g. 'warm, teasing, direct, soft-spoken'",
+  "traits": ["3 to 6 short traits, 1-2 words each"],
+  "phrases": ["up to 8 of ${name}'s real signature phrases or sayings, in their exact words"]
+}
+
+Answers:
+${qa || "(few answers given)"}${ctx}`;
+  let card = {};
+  try { card = JSON.parse(await gemini.complete(prompt, { json: true })); } catch { card = {}; }
+  const phrases = Array.isArray(card.phrases) ? card.phrases.map((s) => String(s).trim().replace(/^["“]|["”]$/g, "")).filter(Boolean).slice(0, 8) : [];
+  return {
+    personaPrompt: card.personaPrompt || "",
+    keyPhrases: phrases,
+    behaviour: {
+      summary: card.summary || "",
+      tone: card.tone || "",
+      traits: Array.isArray(card.traits) ? card.traits.map((s) => String(s).trim()).filter(Boolean).slice(0, 6) : [],
+      phrases,
+    },
+  };
+}
+
+// Distil the owner's OWN chats into how they write — feeds the persona. Never stores raw or sensitive data.
+export async function summarizeOwnerChats(chatText, name = "you") {
+  const sample = String(chatText || "").slice(-16000);
+  const prompt = `These are real chat messages written by ${name}. In 90-130 words, describe HOW ${name} writes and talks: tone, energy, humor, favourite words and phrases, emoji habits, how they show they care, and their rhythm — so an AI can sound exactly like ${name}. Do NOT include phone numbers, addresses, emails, passwords, OTPs, links, or any sensitive data. Write in second person describing ${name}.\n\nMessages:\n${sample}`;
+  return (await gemini.complete(prompt)).trim();
+}
+
 // Summarize a WhatsApp export into "how the owner related to THIS guardian". Never stores the
 // raw chat; explicitly excludes sensitive data from the summary.
 export async function summarizeWhatsApp(chatText, userName = "the owner", guardianName = "this person") {
