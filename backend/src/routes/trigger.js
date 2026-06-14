@@ -236,10 +236,14 @@ r.post("/recipient-otp", async (req, res, next) => {
     const { userId, email } = req.body;
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Enter a valid email." });
     const user = await User.findById(userId);
-    if (user?.estateState !== "EXECUTING") return res.status(403).json({ error: "Not yet available." });
     const e = String(email).toLowerCase();
+    // Access opens at death (EXECUTING marks every death-message delivered) OR when a
+    // time-capsule addressed to them has already come due (delivered while still alive).
     const has = (await Message.find({ userId, delivered: true })).some((m) => m.scope === "global" || msgRecipients(m).includes(e));
-    if (!has) return res.status(404).json({ error: "No messages were left for that address." });
+    if (!has) {
+      if (user?.estateState !== "EXECUTING") return res.status(403).json({ error: "Not yet available." });
+      return res.status(404).json({ error: "No messages were left for that address." });
+    }
     const code = String(crypto.randomInt(100000, 1000000));
     await setOtp(`rcp:${userId}:${email.toLowerCase()}`, code);
     let sent = false;
