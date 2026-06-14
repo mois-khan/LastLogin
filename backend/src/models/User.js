@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema(
     // The master passphrase / derived key NEVER reach the server.
     vaultSalt: String,
     vaultVerifier: { iv: String, data: String },
+    // The vault's Data Encryption Key, wrapped by the passphrase-derived key. The server
+    // stores this opaque blob but can't open it; only the owner's passphrase (or 2 guardian
+    // recovery codes, which never touch the server) can unwrap the DEK.
+    vaultWrappedDek: { iv: String, data: String },
     // Optional extra guardian challenge: a question + a hashed answer.
     securityQuestion: { question: String, answerHash: String },
   },

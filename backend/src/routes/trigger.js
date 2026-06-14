@@ -48,7 +48,9 @@ async function guardianGrants(g, user) {
         return { type: i.type, label: i.label, platform: i.platform, fields };
       } catch { return { type: i.type, label: i.label, platform: i.platform, locked: true }; }
     }
-    return { type: i.type, label: i.label, platform: i.platform, locked: true };
+    // Zero-knowledge item: the server cannot open it. Hand the guardian the ciphertext so the
+    // browser can decrypt it AFTER two guardians combine their recovery codes to rebuild the DEK.
+    return { type: i.type, label: i.label, platform: i.platform, scheme: "client", cipher: { iv: i.blob?.iv, data: i.blob?.data } };
   });
   const gf = await Attachment.find({ _id: { $in: g.fileAccess || [] }, userId: g.userId, disposition: "transfer" });
   const files = gf.map((f) => ({ id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, dataUrl: f.dataUrl }));

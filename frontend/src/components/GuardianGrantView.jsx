@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip, AudioLines, KeyRound } from "lucide-react";
+import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip, AudioLines, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 import { providerIcon, providerColor } from "../lib/providers.js";
+import { combine } from "../lib/shamir.js";
+import { importDek, decryptJSON } from "../lib/crypto.js";
 import AudioPlayer from "./ui/AudioPlayer.jsx";
 import Candle from "./ui/Candle.jsx";
 
@@ -105,12 +107,30 @@ function MessagesSection({ messages }) {
 }
 
 function AccountsSection({ items }) {
+  // Zero-knowledge items arrive as ciphertext the server can't open. Two guardians paste their
+  // recovery codes → we rebuild the vault DEK in THIS browser (Shamir) → decrypt locally.
+  const encrypted = items.some((it) => it.scheme === "client" && it.cipher);
+  const [opened, setOpened] = useState({}); // index -> decrypted fields
+  const [unlocked, setUnlocked] = useState(false);
+
+  const needsUnlock = encrypted && !unlocked;
+
   return (
     <>
+      {encrypted && (
+        <RecoveryUnlock
+          items={items}
+          unlocked={unlocked}
+          onUnlock={(fieldsByIdx) => { setOpened(fieldsByIdx); setUnlocked(true); }}
+        />
+      )}
       <p className="text-sm text-mist mb-5">Tap any value to copy it.</p>
       <div className="space-y-4">
         {items.map((it, idx) => {
           const Icon = (it.platform && providerIcon(it.platform)) || Paperclip;
+          const clientFields = opened[idx];
+          const isLocked = it.locked || (it.scheme === "client" && !clientFields);
+          const fields = it.scheme === "client" ? clientFields : it.fields;
           return (
             <article key={idx} className="surface p-6 rise" style={{ animationDelay: `${Math.min(idx, 6) * 50}ms` }}>
               <div className="flex items-center gap-3.5 mb-4">
@@ -120,11 +140,13 @@ function AccountsSection({ items }) {
                   <p className="eyebrow mt-0.5">{it.platform || it.type}</p>
                 </div>
               </div>
-              {it.locked ? (
-                <p className="text-xs text-mist flex items-center gap-1.5 bg-paper/70 rounded-xl px-3 py-2.5"><Lock size={13} /> Encrypted — opens when two guardians combine their keys.</p>
+              {isLocked ? (
+                <p className="text-xs text-mist flex items-center gap-1.5 bg-paper/70 rounded-xl px-3 py-2.5">
+                  <Lock size={13} /> {needsUnlock ? "Encrypted — enter two recovery codes above to open." : "Encrypted — opens when two guardians combine their keys."}
+                </p>
               ) : (
                 <div className="space-y-2">
-                  {Object.entries(it.fields || {}).map(([k, v]) => <Cred key={k} field={k} value={String(v)} />)}
+                  {Object.entries(fields || {}).map(([k, v]) => <Cred key={k} field={k} value={String(v)} />)}
                 </div>
               )}
             </article>
@@ -132,6 +154,59 @@ function AccountsSection({ items }) {
         })}
       </div>
     </>
+  );
+}
+
+// Two-of-three recovery: paste any two guardian codes; we reconstruct the DEK and decrypt the
+// encrypted items right here in the browser. The codes are never sent anywhere.
+function RecoveryUnlock({ items, unlocked, onUnlock }) {
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  if (unlocked) {
+    return (
+      <div className="card !py-3 mb-5 flex items-center gap-2 text-sm text-sage-600">
+        <ShieldCheck size={16} /> Vault unlocked in this browser. The codes were never sent to a server.
+      </div>
+    );
+  }
+
+  const submit = async (e) => {
+    e.preventDefault(); setErr(""); setBusy(true);
+    try {
+      const raw = combine([a.trim(), b.trim()]);
+      const key = await importDek(raw);
+      const next = {};
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].scheme === "client" && items[i].cipher) next[i] = await decryptJSON(items[i].cipher, key);
+      }
+      onUnlock(next); // every item decrypted cleanly
+    } catch {
+      setErr("Those two codes didn't open the vault. Double-check them and try again.");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <form onSubmit={submit} className="card mb-5">
+      <div className="flex items-center gap-2 mb-2">
+        <KeyRound size={17} className="text-ember" />
+        <h3 className="font-display text-h">Unlock the encrypted vault</h3>
+      </div>
+      <p className="text-sm text-mist mb-4">
+        Some items are end-to-end encrypted — not even LastLogin can read them. Enter your code and
+        one other guardian's to open them here, on your device.
+      </p>
+      <label className="label">Your recovery code</label>
+      <input className="field mb-3 mono text-xs" value={a} onChange={(e) => setA(e.target.value)} placeholder="1a2b3c…" autoComplete="off" />
+      <label className="label">A second guardian's code</label>
+      <input className="field mb-4 mono text-xs" value={b} onChange={(e) => setB(e.target.value)} placeholder="2d4e6f…" autoComplete="off" />
+      {err && <p className="text-sm text-ember mb-3">{err}</p>}
+      <button className="btn-primary btn-sm" disabled={busy || !a.trim() || !b.trim()}>
+        {busy ? <Loader2 size={14} className="animate-spin" /> : "Open the vault"}
+      </button>
+    </form>
   );
 }
 
