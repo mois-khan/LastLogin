@@ -14,7 +14,7 @@ export default function Login() {
   const { user, login, register } = useAuth();
   const nav = useNavigate();
   const [mode, setMode] = useState("register");
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [agreed, setAgreed] = useState(false);
@@ -25,7 +25,7 @@ export default function Login() {
     e.preventDefault();
     setErr(""); setBusy(true);
     try {
-      if (mode === "register") await register(form.email, form.password, form.name);
+      if (mode === "register") await register(form.email, form.password, form.name, form.phone);
       else await login(form.email, form.password);
       nav("/app/assistant");
     } catch (e2) {
@@ -80,11 +80,18 @@ export default function Login() {
           </div>
 
           {mode === "register" && (
-            <div className="mb-4">
-              <label className="label">Your name</label>
-              <input className="field" value={form.name} autoComplete="name"
-                onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
+            <>
+              <div className="mb-4">
+                <label className="label">Your name</label>
+                <input className="field" value={form.name} autoComplete="name"
+                  onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div className="mb-4">
+                <label className="label">Phone <span className="text-mist font-body">· lets a guardian find your estate by number</span></label>
+                <input className="field" type="tel" value={form.phone} autoComplete="tel" placeholder="+91…"
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+            </>
           )}
           <div className="mb-4">
             <label className="label">Email</label>
