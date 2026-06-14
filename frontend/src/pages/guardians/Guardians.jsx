@@ -71,7 +71,7 @@ export default function Guardians() {
 
       {/* Security question */}
       <div className="card max-w-xl mb-6">
-        <h3 className="text-h mb-1 flex items-center gap-2"><KeyRound size={18} className="text-ember" /> Security question <span className="text-xs text-mist font-body">· optional</span></h3>
+        <h3 className="text-h mb-1 flex items-center gap-2"><KeyRound size={18} className="text-graphite" /> Security question <span className="text-xs text-mist font-body">· optional</span></h3>
         <p className="text-sm text-mist mb-4">An extra layer — a guardian must answer this (plus their emailed code) to confirm.</p>
         <input className="field mb-2" placeholder="e.g. What was the name of our first pet?" value={sq.question}
           onChange={(e) => setSq({ ...sq, question: e.target.value })} />
@@ -87,16 +87,16 @@ export default function Guardians() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Add */}
         <div className="card lg:col-span-1 self-start">
-          <h3 className="text-h mb-4 flex items-center gap-2"><UserPlus size={18} className="text-ember" /> Add a guardian</h3>
+          <h3 className="text-h mb-4 flex items-center gap-2"><UserPlus size={18} className="text-graphite" /> Add a guardian</h3>
           <label className="label">Name</label>
           <input className="field mb-3" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <label className="label">Email</label>
           <input className="field mb-3" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="they@example.com" />
           <label className="label flex items-center gap-1.5"><Phone size={12} /> Phone number</label>
           <input className="field mb-3" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91…" />
-          <label className="label flex items-center gap-1.5"><Wallet size={12} /> Solana wallet address <span className="text-mist font-body">· optional</span></label>
+          <label className="label flex items-center gap-1.5"><Wallet size={12} /> Ethereum wallet address <span className="text-mist font-body">· optional</span></label>
           <input className="field mb-4 mono text-xs" value={form.walletAddress}
-            onChange={(e) => setForm({ ...form, walletAddress: e.target.value })} placeholder="optional" />
+            onChange={(e) => setForm({ ...form, walletAddress: e.target.value })} placeholder="0x…" />
           <button className="btn-primary w-full" onClick={add} disabled={saving || !form.name.trim()}>{saving ? "Adding…" : "Add guardian"}</button>
         </div>
 

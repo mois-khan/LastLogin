@@ -7,7 +7,7 @@ const links = [
   { to: "/app/vault", label: "Vault", Icon: Lock },
   { to: "/app/guardians", label: "Guardians", Icon: Users },
   { to: "/app/messages", label: "Messages", Icon: Mic },
-  { to: "/app/executor", label: "Accounts", Icon: Mail },
+  { to: "/app/executor", label: "Closures", Icon: Mail },
 ];
 
 export default function Shell() {

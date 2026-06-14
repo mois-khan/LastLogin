@@ -13,7 +13,8 @@
 import {
   SiGmail, SiProtonmail, SiInstagram, SiFacebook, SiX, SiYoutube, SiGithub,
   SiReddit, SiNetflix, SiSpotify, SiApple, SiPaypal, SiWhatsapp, SiDiscord,
-  SiDropbox, SiTelegram,
+  SiDropbox, SiTelegram, SiIcloud, SiTiktok, SiSnapchat, SiPinterest, SiTwitch,
+  SiCoinbase, SiBinance, SiGoogledrive, SiSlack, SiSteam,
 } from "react-icons/si";
 import { Globe, Mail, Banknote } from "lucide-react";
 
@@ -36,12 +37,20 @@ export const PROVIDERS = [
   { key: "whatsapp", label: "WhatsApp", Icon: SiWhatsapp, loginUrl: "https://web.whatsapp.com", category: "social" },
   { key: "discord", label: "Discord", Icon: SiDiscord, loginUrl: "https://discord.com/login", category: "social" },
   { key: "telegram", label: "Telegram", Icon: SiTelegram, loginUrl: "https://web.telegram.org", category: "social" },
+  { key: "tiktok", label: "TikTok", Icon: SiTiktok, loginUrl: "https://www.tiktok.com/login", category: "social" },
+  { key: "snapchat", label: "Snapchat", Icon: SiSnapchat, loginUrl: "https://accounts.snapchat.com", category: "social" },
+  { key: "pinterest", label: "Pinterest", Icon: SiPinterest, loginUrl: "https://www.pinterest.com/login", category: "social" },
+  { key: "twitch", label: "Twitch", Icon: SiTwitch, loginUrl: "https://www.twitch.tv/login", category: "social" },
 
   // Accounts / cloud
   { key: "github", label: "GitHub", Icon: SiGithub, loginUrl: "https://github.com/login", category: "account" },
   { key: "apple", label: "Apple ID", Icon: SiApple, loginUrl: "https://account.apple.com", category: "account" },
+  { key: "icloud", label: "iCloud", Icon: SiIcloud, loginUrl: "https://www.icloud.com", category: "account" },
   { key: "amazon", label: "Amazon", Icon: Globe, loginUrl: "https://www.amazon.com/ap/signin", category: "account" },
   { key: "dropbox", label: "Dropbox", Icon: SiDropbox, loginUrl: "https://www.dropbox.com/login", category: "account" },
+  { key: "googledrive", label: "Google Drive", Icon: SiGoogledrive, loginUrl: "https://drive.google.com", category: "account" },
+  { key: "slack", label: "Slack", Icon: SiSlack, loginUrl: "https://slack.com/signin", category: "account" },
+  { key: "steam", label: "Steam", Icon: SiSteam, loginUrl: "https://store.steampowered.com/login", category: "account" },
 
   // Subscription
   { key: "netflix", label: "Netflix", Icon: SiNetflix, loginUrl: "https://www.netflix.com/login", category: "subscription" },
@@ -49,6 +58,8 @@ export const PROVIDERS = [
 
   // Money
   { key: "paypal", label: "PayPal", Icon: SiPaypal, loginUrl: "https://www.paypal.com/signin", category: "bank" },
+  { key: "coinbase", label: "Coinbase", Icon: SiCoinbase, loginUrl: "https://www.coinbase.com/signin", category: "bank" },
+  { key: "binance", label: "Binance", Icon: SiBinance, loginUrl: "https://accounts.binance.com/en/login", category: "bank" },
 
   // Anything else
   { key: "other", label: "Other site", Icon: Globe, loginUrl: "", category: "account" },

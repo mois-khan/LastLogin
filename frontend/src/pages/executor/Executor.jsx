@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus, Send, Loader2, Check, Trash2, FileText } from "lucide-react";
+import { Plus, Send, Loader2, Check, Trash2, FileText, Globe, Banknote } from "lucide-react";
 import { api } from "../../lib/api.js";
+import { providerIcon } from "../../lib/providers.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const PRESETS = [
@@ -41,14 +42,13 @@ function fmtTime(at) {
   return Number.isNaN(d.getTime()) ? null : d.toLocaleString();
 }
 
-function Logo({ domain, size = 32 }) {
-  const [src, setSrc] = useState(`https://logo.clearbit.com/${domain}`);
-  return (
-    <img src={src} alt="" width={size} height={size}
-      onError={() => setSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=64`)}
-      className="rounded-lg bg-paper border border-line object-contain p-0.5" />
-  );
-}
+// Vector brand mark from our provider set (offline, crisp on paper) — falls back to a category glyph.
+const KEY_BY_NAME = { google: "gmail", gmail: "gmail", outlook: "outlook", instagram: "instagram", facebook: "facebook", x: "x", twitter: "x", linkedin: "linkedin", netflix: "netflix", spotify: "spotify", amazon: "amazon", apple: "apple", icloud: "icloud", paypal: "paypal", dropbox: "dropbox", github: "github" };
+const markFor = (name, category) => {
+  const k = KEY_BY_NAME[(name || "").toLowerCase().replace(/[^a-z]/g, "")];
+  if (k) return providerIcon(k);
+  return /bank|financ|pay|money/.test(category || "") ? Banknote : Globe;
+};
 
 export default function Executor() {
   const { user } = useAuth();
@@ -95,14 +95,16 @@ export default function Executor() {
           <h3 className="text-h mb-4">Add an account</h3>
           <label className="label">Common services</label>
           <div className="grid grid-cols-3 gap-2 mb-5">
-            {PRESETS.map((p) => (
+            {PRESETS.map((p) => {
+              const Icon = markFor(p.platform, p.category);
+              return (
               <button key={p.domain} disabled={taken.has(p.domain)}
                 onClick={() => add({ platform: p.platform, domain: p.domain, category: p.category, action: "delete" })}
                 className="chip flex-col gap-1.5 py-3 border-line hover:border-ember disabled:opacity-30 disabled:cursor-not-allowed">
-                <Logo domain={p.domain} size={24} />
+                <Icon size={20} className="text-ink" />
                 <span className="text-xs">{p.platform}</span>
               </button>
-            ))}
+            ); })}
           </div>
           <label className="label">Or add your own</label>
           <input className="field mb-2" placeholder="Platform (e.g. HDFC Bank)" value={custom.platform}
@@ -127,15 +129,16 @@ export default function Executor() {
               {accounts.map((a) => {
                 const st = sendStatus(a);
                 const sent = a.status === "sent" && st?.tone !== "ember";
+                const Icon = markFor(a.platform, a.category);
                 return (
                 <div key={a._id} className="card card-hover">
                   <div className="flex items-center gap-3">
-                    <Logo domain={a.domain} />
+                    <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={18} /></span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{a.platform}</div>
                       <div className="text-xs text-mist truncate">{a.domain}</div>
                     </div>
-                    <span className={`pill ${a.action === "delete" ? "bg-ember/12 text-ember" : a.action === "memorialize" ? "bg-sage/15 text-sage-600" : "bg-paper text-graphite border border-line"}`}>
+                    <span className={`pill ${a.action === "delete" ? "bg-mist/10 text-mist border border-line" : a.action === "memorialize" ? "bg-sage/15 text-sage-600" : "bg-paper text-graphite border border-line"}`}>
                       {ACTION_LABEL[a.action]}
                     </span>
                     {sent ? (
