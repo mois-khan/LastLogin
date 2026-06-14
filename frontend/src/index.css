@@ -5,7 +5,7 @@
 /* ── Theme tokens. Light is the default; `.dark` on <html> flips everything. ── */
 :root {
   color-scheme: light;
-  --paper: 240 240 244;  /* soft gray canvas — white cards float on it */
+  --paper: 240 240 244;  /* soft gray canvas - white cards float on it */
   --cloud: 243 243 246;  /* recessed fields/wells inside white cards */
   --card: 255 255 255;   /* white cards, lifted by shadow */
   --ink: 23 23 27;       /* near-black, for bold type */
@@ -99,7 +99,7 @@ h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; colo
   .hairline { @apply border-line; }
 }
 
-/* Candle — visible on white, a glowing light source on dark. */
+/* Candle - visible on white, a glowing light source on dark. */
 .candle-body { fill: var(--candle-fill); stroke: var(--candle-stroke); }
 @keyframes flicker {
   0%, 100% { transform: scale(1) rotate(-1deg); opacity: .95; }

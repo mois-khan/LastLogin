@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Play, Pause } from "lucide-react";
 
-// A calm, keyboard-accessible audio player — no raw browser chrome. One ember play
+// A calm, keyboard-accessible audio player - no raw browser chrome. One ember play
 // button, a seekable bar (click + arrow keys), elapsed / total time. Used wherever a
 // cloned-voice message is heard: the guardian portal, the memorial, and Messages.
 export default function AudioPlayer({ src }) {

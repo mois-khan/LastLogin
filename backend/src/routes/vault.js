@@ -55,7 +55,7 @@ r.post("/", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Set an asset's lifecycle rule. Flipping to "delete" also revokes any guardian grant —
+// Set an asset's lifecycle rule. Flipping to "delete" also revokes any guardian grant -
 // a deletion-flagged asset must be invisible to every guardian (data-isolation constraint).
 r.patch("/:id/disposition", async (req, res, next) => {
   try {
@@ -91,7 +91,7 @@ r.get("/:id/reveal", async (req, res, next) => {
 });
 
 // Seal: compute the vault's integrity fingerprint AND anchor it on-chain (setVaultHash),
-// so "sealed" is a real, tamper-evident commitment on Sepolia — not just a local hash.
+// so "sealed" is a real, tamper-evident commitment on Sepolia - not just a local hash.
 // Anchoring is best-effort: a Mongo-only demo (no contract/keys configured) still returns
 // the fingerprint, just without a txHash.
 r.get("/fingerprint", async (req, res, next) => {

@@ -14,7 +14,7 @@ import {
 } from "react-icons/si";
 import { Globe, Mail, Banknote } from "lucide-react";
 
-// SiLinkedin / SiAmazon do not ship in this react-icons version — fall back safely.
+// SiLinkedin / SiAmazon do not ship in this react-icons version - fall back safely.
 const SiLinkedin = Globe;
 
 export const PROVIDERS = [

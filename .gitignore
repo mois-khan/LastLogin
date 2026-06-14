@@ -16,5 +16,5 @@ coverage/
 
 # local agent config
 .claude/
-# demo wallet keys — NEVER commit private keys (Sepolia throwaway or not)
+# demo wallet keys - NEVER commit private keys (Sepolia throwaway or not)
 contracts/demo-actors.json

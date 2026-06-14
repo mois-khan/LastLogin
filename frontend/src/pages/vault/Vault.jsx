@@ -101,7 +101,7 @@ function VaultBody() {
     const fields = Object.fromEntries(Object.entries(values).filter(([, v]) => String(v ?? "").trim()));
     try {
       // Encrypt the fields in the browser under the in-memory DEK. The server stores only
-      // ciphertext (scheme "client") it cannot open — it never sees the raw credentials.
+      // ciphertext (scheme "client") it cannot open - it never sees the raw credentials.
       const blob = await encryptJSON(fields, dek);
       await api.post("/vault", { type, platform: type === "account" ? platform : undefined, label: label.trim(), blob, disposition });
       setLabel(""); setValues({}); setDisposition("transfer"); await load();
@@ -136,7 +136,7 @@ function VaultBody() {
   return (
     <div className="rise">
       <h1 className="font-display text-title mb-1">Your vault</h1>
-      <p className="text-mist mb-6 max-w-xl">The real details your family will need — encrypted at rest, released only to the guardians you choose.</p>
+      <p className="text-mist mb-6 max-w-xl">The real details your family will need - encrypted at rest, released only to the guardians you choose.</p>
 
       <div className="seg mb-8">
         <button className={`seg-btn ${tab === "accounts" ? "seg-btn-active" : ""}`} onClick={() => setTab("accounts")}><Lock size={15} /> Accounts & assets</button>
@@ -149,7 +149,7 @@ function VaultBody() {
         <div className="card lg:col-span-2 self-start">
           <h3 className="text-h mb-4">Add to vault</h3>
 
-          <label className="label">Pick a service — we fill in the rest</label>
+          <label className="label">Pick a service - we fill in the rest</label>
           <div className="grid grid-cols-4 gap-2 mb-4 max-h-64 overflow-y-auto pr-1 -mr-1">
             {PROVIDERS.map((p) => {
               const Icon = p.Icon;
@@ -258,7 +258,7 @@ function VaultBody() {
             <div className="mt-4 rounded-xl bg-paper border border-line p-3 rise">
               <p className="text-xs text-mist mb-1">
                 {sealTx
-                  ? "Sealed on-chain. This fingerprint is now anchored on Ethereum — proof your family's records were never altered."
+                  ? "Sealed on-chain. This fingerprint is now anchored on Ethereum - proof your family's records were never altered."
                   : "Sealed. This fingerprint is the proof your family's records were never altered."}
               </p>
               <p className="mono text-xs break-all text-ink">{fp}</p>
@@ -321,7 +321,7 @@ function FileVault() {
 
   return (
     <section className="rise">
-      <p className="text-mist mb-5 max-w-xl text-sm">Photos, scanned documents, a will, a video — kept encrypted and released to the guardians you choose, just like your accounts.</p>
+      <p className="text-mist mb-5 max-w-xl text-sm">Photos, scanned documents, a will, a video - kept encrypted and released to the guardians you choose, just like your accounts.</p>
 
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Dropzone */}
@@ -339,7 +339,7 @@ function FileVault() {
               <Upload size={24} className="mx-auto mb-2 text-mist" />
             )}
             <p className="text-sm text-ink font-medium">{busy ? "Uploading…" : "Drop files here, or click to choose"}</p>
-            <p className="text-xs text-mist mt-1">Images, PDFs, video — encrypted on upload.</p>
+            <p className="text-xs text-mist mt-1">Images, PDFs, video - encrypted on upload.</p>
           </div>
         </div>
 
@@ -386,7 +386,7 @@ function FileVault() {
   );
 }
 
-// Two-state lifecycle selector — Visible/Transfer vs Close quietly.
+// Two-state lifecycle selector - Visible/Transfer vs Close quietly.
 function DispositionSelector({ value, onChange, small, className = "" }) {
   const opts = [
     { v: "transfer", label: "Pass on", Icon: Send },
@@ -404,7 +404,7 @@ function DispositionSelector({ value, onChange, small, className = "" }) {
   );
 }
 
-// The vault is gated by a master passphrase. The passphrase never leaves the browser — it
+// The vault is gated by a master passphrase. The passphrase never leaves the browser - it
 // derives a key that unwraps the vault's DEK, held in memory only. First-time visitors set
 // a passphrase (and are shown 3 one-time guardian recovery codes); returning visitors unlock.
 export default function Vault() {
@@ -425,7 +425,7 @@ export default function Vault() {
 
   const doSetup = async (e) => {
     e.preventDefault(); setErr("");
-    if (pass.length < 8) return setErr("Use at least 8 characters — this guards everything.");
+    if (pass.length < 8) return setErr("Use at least 8 characters - this guards everything.");
     if (pass !== confirm) return setErr("The two passphrases don't match.");
     setBusy(true);
     try { setCodes(await setup(pass)); setPhase("codes"); }
@@ -454,7 +454,7 @@ export default function Vault() {
             <span className="grid place-items-center h-11 w-11 rounded-xl bg-ember/10 text-ember mb-4"><Lock size={20} /></span>
             <h1 className="font-display text-h mb-1">Set your vault passphrase</h1>
             <p className="text-sm text-mist mb-6">
-              This encrypts everything in your browser before it's stored. We never see it — so
+              This encrypts everything in your browser before it's stored. We never see it - so
               keep it safe. If you lose it, your guardians can still recover the vault together.
             </p>
             <form onSubmit={doSetup}>
@@ -474,7 +474,7 @@ export default function Vault() {
           <div className="card">
             <span className="grid place-items-center h-11 w-11 rounded-xl bg-ember/10 text-ember mb-4"><Lock size={20} /></span>
             <h1 className="font-display text-h mb-1">Unlock your vault</h1>
-            <p className="text-sm text-mist mb-6">Enter your passphrase. It's checked in your browser — it never reaches our servers.</p>
+            <p className="text-sm text-mist mb-6">Enter your passphrase. It's checked in your browser - it never reaches our servers.</p>
             <form onSubmit={doUnlock}>
               <label className="label">Passphrase</label>
               <input className="field mb-4" type="password" autoFocus value={pass} onChange={(e) => setPass(e.target.value)} />
@@ -500,7 +500,7 @@ function RecoveryCodes({ codes = [], threshold = 2, onDone }) {
   };
   const download = () => {
     const body = [
-      "LastLogin — guardian recovery codes",
+      "LastLogin - guardian recovery codes",
       `Any ${threshold} of these ${codes.length} codes can recover the vault. Keep each one private.`,
       "", ...codes.map((c, i) => `Guardian ${i + 1}:\n${c}\n`),
     ].join("\n");
@@ -514,9 +514,9 @@ function RecoveryCodes({ codes = [], threshold = 2, onDone }) {
       <h1 className="font-display text-h mb-1">Your guardian recovery codes</h1>
       <p className="text-sm text-mist mb-1">
         Give one code to each guardian. Any <span className="text-ink">{threshold}</span> of them can
-        recover your vault together after you're gone — no single guardian, and never us, can do it alone.
+        recover your vault together after you're gone - no single guardian, and never us, can do it alone.
       </p>
-      <p className="text-xs text-ember mb-5">Shown once. Save them now — you won't see them again.</p>
+      <p className="text-xs text-ember mb-5">Shown once. Save them now - you won't see them again.</p>
 
       <div className="space-y-2 mb-5">
         {codes.map((c, i) => (
@@ -531,7 +531,7 @@ function RecoveryCodes({ codes = [], threshold = 2, onDone }) {
 
       <div className="flex gap-2">
         <button className="btn-secondary btn-sm" onClick={download}><Upload size={14} className="rotate-180" /> Download codes</button>
-        <button className="btn-primary btn-sm flex-1" onClick={onDone}>I've saved them — open my vault</button>
+        <button className="btn-primary btn-sm flex-1" onClick={onDone}>I've saved them - open my vault</button>
       </div>
     </div>
   );

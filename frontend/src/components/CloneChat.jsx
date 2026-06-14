@@ -29,7 +29,7 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
       const reply = await sendMessage(msg, lang || "auto", !!withAudio);
       setMessages((m) => [...m, { role: "clone", text: reply.text, audioUrl: reply.audioUrl }]);
     } catch {
-      setMessages((m) => [...m, { role: "clone", text: "I'm having a quiet moment — try me again in a second.", error: true }]);
+      setMessages((m) => [...m, { role: "clone", text: "I'm having a quiet moment - try me again in a second.", error: true }]);
     } finally { setBusy(false); }
   };
 
@@ -52,7 +52,7 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
     if (!file || !uploadContext) return;
     setCtx({ busy: true });
     try { const res = await uploadContext(file); setCtx({ done: true, summary: res?.summary }); }
-    catch (e) { setCtx({ error: e.response?.data?.error || "Couldn't read that chat — export it without media and try again." }); }
+    catch (e) { setCtx({ error: e.response?.data?.error || "Couldn't read that chat - export it without media and try again." }); }
     finally { if (fileRef.current) fileRef.current.value = ""; }
   };
   const reset = async () => { try { await clearHistory?.(); } catch {} setMessages([]); };
@@ -63,14 +63,14 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
         <span className="grid place-items-center h-10 w-10 rounded-full bg-ember/12 text-ember shrink-0"><Sparkles size={18} /></span>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-ink">Talk with {name}</p>
-          <p className="text-xs text-mist">A remembrance — in their words and voice.</p>
+          <p className="text-xs text-mist">A remembrance - in their words and voice.</p>
         </div>
         {messages.length > 0 && <button onClick={reset} className="text-mist hover:text-ember p-1.5 rounded-lg" title="Clear conversation"><Trash2 size={15} /></button>}
       </div>
 
       <p className="text-xs text-mist bg-paper/70 rounded-xl px-3 py-2.5 mb-4 flex items-start gap-2">
         <ShieldCheck size={14} className="text-sage-600 mt-0.5 shrink-0" />
-        A gentle AI recreation of {name}, not really them — here only for memories and comfort. It won't share private details or take on everyday tasks.
+        A gentle AI recreation of {name}, not really them - here only for memories and comfort. It won't share private details or take on everyday tasks.
       </p>
 
       {uploadContext && (
@@ -78,7 +78,7 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
           <input ref={fileRef} type="file" accept=".txt,.zip" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
           {ctx?.done ? (
             <div className="rounded-xl bg-sage/8 border border-sage/30 px-3.5 py-3">
-              <p className="text-sm text-sage-600 font-medium flex items-center gap-1.5"><Check size={14} /> Personalized — {name} will sound more like how they were with you.</p>
+              <p className="text-sm text-sage-600 font-medium flex items-center gap-1.5"><Check size={14} /> Personalized - {name} will sound more like how they were with you.</p>
               {ctx.summary && <p className="text-xs text-graphite mt-2 leading-relaxed">{ctx.summary}</p>}
               <button onClick={() => { setCtx(null); setTimeout(() => fileRef.current?.click(), 0); }} className="text-xs text-ember hover:underline mt-2">Replace</button>
             </div>
@@ -87,7 +87,7 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
               <button onClick={() => fileRef.current?.click()} disabled={ctx?.busy} className="btn-secondary btn-sm">
                 {ctx?.busy ? <><Loader2 size={14} className="animate-spin" /> Reading your chat…</> : <><Upload size={14} /> Personalize with your chat</>}
               </button>
-              <p className="text-xs text-mist mt-1.5">Optional: in WhatsApp open your chat with {name} → Export chat → Without media, then upload the .txt or .zip. We keep only a private summary — never the chat.</p>
+              <p className="text-xs text-mist mt-1.5">Optional: in WhatsApp open your chat with {name} → Export chat → Without media, then upload the .txt or .zip. We keep only a private summary - never the chat.</p>
               {ctx?.error && <p className="text-xs text-ember mt-1.5">{ctx.error}</p>}
             </>
           )}
@@ -112,7 +112,7 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <input className="field" placeholder={phase === "rec" ? "Listening…" : `Talk to ${name} — type or speak, any language…`} value={input}
+        <input className="field" placeholder={phase === "rec" ? "Listening…" : `Talk to ${name} - type or speak, any language…`} value={input}
           onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
         <button onClick={talk} disabled={busy || phase === "stt"} title="Speak"
           className={`grid place-items-center h-10 w-10 rounded-full shrink-0 transition ${phase === "rec" ? "bg-ember text-white animate-pulse" : "btn-secondary"}`}>

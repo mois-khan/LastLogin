@@ -1,7 +1,7 @@
-# LastLogin — GitHub Strategy (winning "Best Use of GitHub")
+# LastLogin - GitHub Strategy (winning "Best Use of GitHub")
 
 GitHub is a confirmed HackPrix sponsor. "Best Use of GitHub" is **not** about
-code quality — it's about demonstrating you used GitHub *as a collaboration
+code quality - it's about demonstrating you used GitHub *as a collaboration
 platform*. It's the cheapest prize to win because it's pure process. Judges
 (and the MLH README rubric) look for: meaningful commit history, branches +
 pull requests, issues, a project board, code review between teammates, Actions
@@ -46,12 +46,12 @@ git add backend/src/services/ai/sarvam.js
 git commit -m "feat(ai): add Sarvam Bulbul TTS for Hindi output"
 git push -u origin feat/voice-pipeline
 ```
-Aim for **40–80 commits across the team** by submission — it shows real work.
+Aim for **40–80 commits across the team** by submission - it shows real work.
 
 ## 3. Pull requests + cross-review (the key signal)
 ```bash
 gh pr create --fill --base main --head feat/voice-pipeline
-# then ANOTHER teammate reviews — never self-merge
+# then ANOTHER teammate reviews - never self-merge
 gh pr review <num> --approve --body "LGTM, tested the Hindi clip"
 gh pr merge <num> --squash --delete-branch
 ```
@@ -63,7 +63,7 @@ This alone produces the review trail that wins the prize.
 - Link PRs to issues: put `Closes #12` in the PR description → auto-closes + links.
 - Move cards on the board as you go. A judge glancing at the board sees momentum.
 
-## 5. Actions (CI) — already scaffolded
+## 5. Actions (CI) - already scaffolded
 `.github/workflows/ci.yml` runs install + contract compile on every push/PR. Keep
 it green. A passing CI badge in the README is a concrete "we use GitHub" proof.
 
@@ -73,7 +73,7 @@ Strong README (see BUILD_PROMPTS S1). Add repo topics: `hackathon`, `ethereum`,
 
 ## 7. In your submission, say it explicitly
 One line wins it: *"Built collaboratively across N branches and M reviewed pull
-requests with CI on every push — see the commit history and project board."*
+requests with CI on every push - see the commit history and project board."*
 Link the Insights → Contributors graph; it visually proves 3-person collaboration.
 
 ---
@@ -117,5 +117,5 @@ section, a "How to test" checklist, and a "Closes #<issue>" line. Keep it short.
 - One person committing everything from one account.
 - A single "initial commit" with the whole project.
 - Force-pushing over history / squashing everything into one commit at the end.
-- Committing `.env` or API keys. (It's in `.gitignore` — keep it that way. If you
+- Committing `.env` or API keys. (It's in `.gitignore` - keep it that way. If you
   ever leak a key, rotate it immediately, don't just delete the commit.)

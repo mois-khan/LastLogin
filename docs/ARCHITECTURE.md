@@ -1,4 +1,4 @@
-# LastLogin — Architecture
+# LastLogin - Architecture
 
 ```
                 ┌───────────────────────────────────────────────┐
@@ -56,4 +56,4 @@ hash lets the family cryptographically prove the contents were never altered aft
 ## Trust & consent model
 Nothing executes while the owner is alive. The owner opts in, proves life periodically
 (dead-man's switch), and only a quorum (2 of 3) of people they personally chose can ever
-trigger execution — mirroring how legal witnesses work.
+trigger execution - mirroring how legal witnesses work.

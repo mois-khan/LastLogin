@@ -6,7 +6,7 @@ import { importDek, decryptJSON } from "../lib/crypto.js";
 import AudioPlayer from "./ui/AudioPlayer.jsx";
 import Candle from "./ui/Candle.jsx";
 
-// One estate's grants for a verified guardian — organized into tabs (Messages / Accounts /
+// One estate's grants for a verified guardian - organized into tabs (Messages / Accounts /
 // Files [/ Talk]) so it's a calm dashboard, not an endless scroll. extraTab lets the caller
 // add a section (the companion chat). Reused by /access and /guardian/:userId.
 export default function GuardianGrantView({ name, messages = [], items = [], files = [], extraTab }) {
@@ -21,7 +21,7 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
   const talkKey = extraTab?.key || "talk";
 
   const downloadAll = () => {
-    const lines = [`LastLogin — released to ${name || "you"}`, ""];
+    const lines = [`LastLogin - released to ${name || "you"}`, ""];
     if (messages.length) {
       lines.push("=== MESSAGES ===");
       messages.forEach((m) => lines.push(`\nFor ${m.recipientName || "family"} (${m.language}):`, m.text));
@@ -31,7 +31,7 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
       lines.push("=== ACCOUNTS & ASSETS ===");
       items.forEach((it) => {
         lines.push(`\n- ${it.label} [${it.platform || it.type}]`);
-        if (it.locked) lines.push("  (encrypted — opens with the guardian quorum)");
+        if (it.locked) lines.push("  (encrypted - opens with the guardian quorum)");
         else Object.entries(it.fields || {}).forEach(([k, v]) => lines.push(`  ${k}: ${v}`));
       });
     }
@@ -49,7 +49,7 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
       <div className="text-center py-12">
         <Candle size={64} still />
         <p className="text-mist text-sm max-w-sm mx-auto mt-5 leading-relaxed">
-          There was nothing left specifically in your care — but thank you for being someone {name || "they"} trusted.
+          There was nothing left specifically in your care - but thank you for being someone {name || "they"} trusted.
         </p>
       </div>
     );
@@ -142,7 +142,7 @@ function AccountsSection({ items }) {
               </div>
               {isLocked ? (
                 <p className="text-xs text-mist flex items-center gap-1.5 bg-paper/70 rounded-xl px-3 py-2.5">
-                  <Lock size={13} /> {needsUnlock ? "Encrypted — enter two recovery codes above to open." : "Encrypted — opens when two guardians combine their keys."}
+                  <Lock size={13} /> {needsUnlock ? "Encrypted - enter two recovery codes above to open." : "Encrypted - opens when two guardians combine their keys."}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -195,7 +195,7 @@ function RecoveryUnlock({ items, unlocked, onUnlock }) {
         <h3 className="font-display text-h">Unlock the encrypted vault</h3>
       </div>
       <p className="text-sm text-mist mb-4">
-        Some items are end-to-end encrypted — not even LastLogin can read them. Enter your code and
+        Some items are end-to-end encrypted - not even LastLogin can read them. Enter your code and
         one other guardian's to open them here, on your device.
       </p>
       <label className="label">Your recovery code</label>
@@ -227,7 +227,7 @@ function FilesSection({ files }) {
   );
 }
 
-// A single credential row — masks secrets, reveals on demand, copies on tap. A non-interactive
+// A single credential row - masks secrets, reveals on demand, copies on tap. A non-interactive
 // container with SIBLING buttons (copy + reveal) so both are keyboard-reachable.
 const SECRET_RE = /pass|secret|seed|private|pin|cvv|key|otp/i;
 function Cred({ field, value }) {

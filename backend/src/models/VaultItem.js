@@ -17,7 +17,7 @@ const vaultItemSchema = new mongoose.Schema(
     // "server" = encrypted at rest, server can open it (so guardians can be handed credentials).
     // "client" = legacy zero-knowledge items (browser-encrypted); shown to the owner only.
     scheme: { type: String, enum: ["server", "client"], default: "server" },
-    // AES-256-GCM blob — raw secret is NEVER stored
+    // AES-256-GCM blob - raw secret is NEVER stored
     blob: { iv: String, tag: String, data: String },
   },
   { timestamps: true }

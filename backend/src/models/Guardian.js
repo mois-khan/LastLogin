@@ -6,9 +6,9 @@ const guardianSchema = new mongoose.Schema(
     name: String,
     email: String,
     phone: String,
-    walletAddress: String, // optional — confirms on-chain if present
+    walletAddress: String, // optional - confirms on-chain if present
     access: { type: [String], default: [] }, // legacy category RBAC (superseded by assetAccess)
-    // Per-guardian, per-asset grants — completely isolated between guardians.
+    // Per-guardian, per-asset grants - completely isolated between guardians.
     assetAccess: { type: [mongoose.Schema.Types.ObjectId], ref: "VaultItem", default: [] },
     fileAccess: { type: [mongoose.Schema.Types.ObjectId], ref: "Attachment", default: [] },
     confirmed: { type: Boolean, default: false }, // uploaded a verified death certificate

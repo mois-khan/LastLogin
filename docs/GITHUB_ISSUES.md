@@ -1,4 +1,4 @@
-# LastLogin — GitHub Issues (ready to auto-create)
+# LastLogin - GitHub Issues (ready to auto-create)
 
 > **Claude Code: how to use this file.**
 > Create every issue listed below in this repo using the GitHub CLI (`gh`).
@@ -12,24 +12,24 @@
 > 4. If a Project board named "LastLogin" exists, add each created issue to it
 >    (`gh project item-add`), otherwise skip silently.
 > 5. Print a short summary: how many labels and issues were created.
-> Do not ask for confirmation between issues — create them all.
+> Do not ask for confirmation between issues - create them all.
 
 ---
 
 ## Labels (create these first)
 
-- `area:chain` — color `5319E7` — Smart contract & blockchain
-- `area:backend` — color `1D76DB` — Express API & data
-- `area:ai` — color `0E8A16` — Gemini / ElevenLabs / Sarvam
-- `area:frontend` — color `FBCA04` — React UI
-- `area:devops` — color `5DADE2` — deploy, CI, infra
-- `type:setup` — color `C2E0C6` — environment & keys
-- `type:wire` — color `D4C5F9` — connect existing pieces together
-- `type:wow` — color `E99695` — judge-impressing features
-- `type:demo` — color `F9D0C4` — demo & submission
-- `priority:p0` — color `B60205` — spine-critical, must work
-- `priority:p1` — color `D93F0B` — important
-- `priority:p2` — color `FEF2C0` — nice to have
+- `area:chain` - color `5319E7` - Smart contract & blockchain
+- `area:backend` - color `1D76DB` - Express API & data
+- `area:ai` - color `0E8A16` - Gemini / ElevenLabs / Sarvam
+- `area:frontend` - color `FBCA04` - React UI
+- `area:devops` - color `5DADE2` - deploy, CI, infra
+- `type:setup` - color `C2E0C6` - environment & keys
+- `type:wire` - color `D4C5F9` - connect existing pieces together
+- `type:wow` - color `E99695` - judge-impressing features
+- `type:demo` - color `F9D0C4` - demo & submission
+- `priority:p0` - color `B60205` - spine-critical, must work
+- `priority:p1` - color `D93F0B` - important
+- `priority:p2` - color `FEF2C0` - nice to have
 
 ---
 
@@ -40,7 +40,7 @@ Labels: type:setup, priority:p0
 Body:
 Collect every key the app needs and put them in `backend/.env` (copy from `.env.example`). See `docs/API_KEYS_GUIDE.md`.
 - [ ] GEMINI_API_KEY (free, aistudio.google.com)
-- [ ] ELEVENLABS_API_KEY ($5 Starter plan — free tier blocks API cloning)
+- [ ] ELEVENLABS_API_KEY ($5 Starter plan - free tier blocks API cloning)
 - [ ] SARVAM_API_KEY (₹100 free credits, dashboard.sarvam.ai)
 - [ ] MONGODB_URI, JWT_SECRET, VAULT_MASTER_KEY set
 - [ ] `npm run dev` starts and `GET /health` returns `{ ok: true }`
@@ -296,7 +296,7 @@ Body:
 ### 36. Candle goes "still" at the death trigger
 Labels: area:frontend, type:wow, priority:p1
 Body:
-- [ ] On the family dashboard the flame animation stops and dims (already coded — verify it reads as intentional)
+- [ ] On the family dashboard the flame animation stops and dims (already coded - verify it reads as intentional)
 
 ### 37. Proof-of-life "I'm still here" button + inactivity banner
 Labels: area:frontend, type:wow, priority:p2
@@ -318,7 +318,7 @@ Body:
 ### 40. Loading + error states on slow AI calls
 Labels: area:frontend, priority:p1
 Body:
-AI calls take seconds — the UI must never look frozen.
+AI calls take seconds - the UI must never look frozen.
 - [ ] Spinners/skeletons while waiting
 - [ ] Friendly error messages on failure
 

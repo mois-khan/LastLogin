@@ -6,7 +6,7 @@ import Candle from "../../components/ui/Candle.jsx";
 import AudioPlayer from "../../components/ui/AudioPlayer.jsx";
 
 // The public memorial the family sees once the estate is verified and executing.
-// Calm, reverent — no chrome, no nav. The screen judges remember.
+// Calm, reverent - no chrome, no nav. The screen judges remember.
 export default function FamilyDashboard() {
   const { userId } = useParams();
   const [data, setData] = useState(null);
@@ -37,17 +37,17 @@ export default function FamilyDashboard() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-2xl px-6 py-20">
-        {/* Header — the flame is still now */}
+        {/* Header - the flame is still now */}
         <div className="flex flex-col items-center text-center rise">
           <Candle size={84} still />
           <p className="mt-7 eyebrow">In loving memory</p>
           <h1 className="mt-4 font-display text-[2.75rem] sm:text-[3.5rem] font-normal leading-[1.05] tracking-[-0.02em]">{data.name}</h1>
           <p className="mt-5 text-graphite max-w-md leading-relaxed">
-            They prepared this for you, while they still could. Take your time — everything here was left with love.
+            They prepared this for you, while they still could. Take your time - everything here was left with love.
           </p>
         </div>
 
-        {/* The voice — the centerpiece */}
+        {/* The voice - the centerpiece */}
         <section className="mt-16">
           <h2 className="font-display text-[1.625rem] leading-[1.18] tracking-[-0.015em] mb-6">Their words for you</h2>
           {data.messages?.length ? (
@@ -73,14 +73,14 @@ export default function FamilyDashboard() {
           )}
         </section>
 
-        {/* The inheritance — settled on-chain */}
+        {/* The inheritance - settled on-chain */}
         {data.executedTx && (
           <section className="mt-14 rise">
             <h2 className="font-display text-[1.625rem] leading-[1.18] tracking-[-0.015em] mb-6">What they left to you</h2>
             <div className="card">
               <div className="flex items-center gap-2 text-sage-600 mb-3">
                 <ShieldCheck size={18} />
-                <span className="text-sm font-medium">They arranged this for you — carried out exactly as they wished.</span>
+                <span className="text-sm font-medium">They arranged this for you - carried out exactly as they wished.</span>
               </div>
               <a className="inline-flex items-center gap-1.5 mono text-xs text-ember hover:underline break-all"
                 href={`https://sepolia.etherscan.io/tx/${data.executedTx}`} target="_blank" rel="noreferrer">

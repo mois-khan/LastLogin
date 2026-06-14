@@ -7,7 +7,7 @@ import ThemeToggle from "../../components/ui/ThemeToggle.jsx";
 
 const TRUST = [
   { Icon: ShieldCheck, text: "Encrypted, and released only after a death is verified." },
-  { Icon: Users, text: "No one acts alone — 2 of your 3 guardians must agree." },
+  { Icon: Users, text: "No one acts alone - 2 of your 3 guardians must agree." },
   { Icon: AudioLines, text: "Your final words, delivered in your own voice." },
 ];
 
@@ -37,7 +37,7 @@ export default function Login() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 relative">
       <div className="absolute top-5 right-5 z-10"><ThemeToggle /></div>
-      {/* Hero — the thesis */}
+      {/* Hero - the thesis */}
       <div className="relative flex flex-col justify-center px-8 sm:px-14 py-16 border-b lg:border-b-0 lg:border-r border-line">
         <div className="max-w-md rise">
           <Candle size={76} />
@@ -46,7 +46,7 @@ export default function Login() {
           </h1>
           <p className="mt-5 text-graphite text-lg leading-relaxed max-w-sm">
             Prepare your accounts, documents and final words while you're here.
-            They're passed on only after your death is verified — gently, and in your own voice.
+            They're passed on only after your death is verified - gently, and in your own voice.
           </p>
 
           <ul className="mt-10 space-y-4">

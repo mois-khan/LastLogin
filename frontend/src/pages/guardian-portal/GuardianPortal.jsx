@@ -5,7 +5,7 @@ import { api } from "../../lib/api.js";
 import GuardianGrantView from "../../components/GuardianGrantView.jsx";
 
 // Direct per-estate link (/guardian/:userId). The universal entry is /access, which needs
-// no userId — but this stays for a shared deep link. Re-verified each visit.
+// no userId - but this stays for a shared deep link. Re-verified each visit.
 export default function GuardianPortal() {
   const { userId } = useParams();
   const [email, setEmail] = useState("");
