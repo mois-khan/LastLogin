@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Lock, ShieldCheck, Globe, Banknote, Coins, Shield, FileText, CreditCard, ScrollText,
-  Trash2, Send, Ban, Upload, Paperclip, Image as ImageIcon, Loader2,
+  Trash2, Send, Ban, Upload, Paperclip, Image as ImageIcon, Loader2, KeyRound, Copy, Check,
 } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { PROVIDERS, providerIcon, providerColor } from "../../lib/providers.js";
+import { useVaultKey } from "../../context/VaultKeyContext.jsx";
+import { encryptJSON, decryptJSON } from "../../lib/crypto.js";
 
 // Custom asset categories + their fields. Online "account" items now flow through the
 // provider picker (PROVIDERS) which auto-fills the login URL + platform; these remain
@@ -62,7 +64,8 @@ const iconFor = (i) => (i.platform && providerIcon(i.platform)) || SCHEMAS[i.typ
 const isImage = (m) => /^image\//.test(m || "");
 const fmtSize = (n) => (!n ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
-export default function Vault() {
+function VaultBody() {
+  const { dek } = useVaultKey();
   const [items, setItems] = useState(null);
   const [type, setType] = useState("account");
   const [platform, setPlatform] = useState("gmail"); // active provider key when type==="account"
@@ -95,7 +98,10 @@ export default function Vault() {
     setSaving(true);
     const fields = Object.fromEntries(Object.entries(values).filter(([, v]) => String(v ?? "").trim()));
     try {
-      await api.post("/vault", { type, platform: type === "account" ? platform : undefined, label: label.trim(), fields, disposition });
+      // Encrypt the fields in the browser under the in-memory DEK. The server stores only
+      // ciphertext (scheme "client") it cannot open — it never sees the raw credentials.
+      const blob = await encryptJSON(fields, dek);
+      await api.post("/vault", { type, platform: type === "account" ? platform : undefined, label: label.trim(), blob, disposition });
       setLabel(""); setValues({}); setDisposition("transfer"); await load();
     } finally { setSaving(false); }
   };
@@ -103,7 +109,10 @@ export default function Vault() {
   const reveal = async (id) => {
     if (revealed[id]) return setRevealed((p) => { const n = { ...p }; delete n[id]; return n; });
     const { data } = await api.get(`/vault/${id}/reveal`);
-    setRevealed((p) => ({ ...p, [id]: data.fields || {} }));
+    // Client-scheme items come back as ciphertext and are decrypted here with the DEK;
+    // legacy server-scheme items arrive already decrypted.
+    const fields = data.scheme === "client" ? await decryptJSON(data.blob, dek) : (data.fields || {});
+    setRevealed((p) => ({ ...p, [id]: fields }));
   };
   const flip = async (i) => {
     const next = i.disposition === "delete" ? "transfer" : "delete";
@@ -368,6 +377,139 @@ function DispositionSelector({ value, onChange, small, className = "" }) {
           <Icon size={small ? 12 : 14} /> {label}
         </button>
       ))}
+    </div>
+  );
+}
+
+// The vault is gated by a master passphrase. The passphrase never leaves the browser — it
+// derives a key that unwraps the vault's DEK, held in memory only. First-time visitors set
+// a passphrase (and are shown 3 one-time guardian recovery codes); returning visitors unlock.
+export default function Vault() {
+  const { unlocked, status, setup, unlock, threshold } = useVaultKey();
+  const [phase, setPhase] = useState("loading"); // loading | setup | unlock | codes | ready
+  const [codes, setCodes] = useState(null);
+  const [pass, setPass] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (unlocked) { setPhase("ready"); return; }
+    status().then(({ needsSetup }) => setPhase(needsSetup ? "setup" : "unlock")).catch(() => setPhase("unlock"));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (unlocked && phase !== "codes") return <VaultBody />;
+
+  const doSetup = async (e) => {
+    e.preventDefault(); setErr("");
+    if (pass.length < 8) return setErr("Use at least 8 characters — this guards everything.");
+    if (pass !== confirm) return setErr("The two passphrases don't match.");
+    setBusy(true);
+    try { setCodes(await setup(pass)); setPhase("codes"); }
+    catch (e2) { setErr(e2.response?.data?.error || "Couldn't set your passphrase. Try again."); }
+    finally { setBusy(false); setPass(""); setConfirm(""); }
+  };
+
+  const doUnlock = async (e) => {
+    e.preventDefault(); setErr(""); setBusy(true);
+    try { await unlock(pass); setPhase("ready"); }
+    catch { setErr("That passphrase didn't open the vault."); }
+    finally { setBusy(false); setPass(""); }
+  };
+
+  return (
+    <div className="rise min-h-[60vh] grid place-items-center">
+      <div className="w-full max-w-md">
+        {phase === "loading" && (
+          <div className="card text-center py-12 text-mist"><Loader2 size={22} className="mx-auto animate-spin" /></div>
+        )}
+
+        {phase === "codes" && <RecoveryCodes codes={codes} threshold={threshold} onDone={() => setPhase("ready")} />}
+
+        {phase === "setup" && (
+          <div className="card">
+            <span className="grid place-items-center h-11 w-11 rounded-xl bg-ember/10 text-ember mb-4"><Lock size={20} /></span>
+            <h1 className="font-display text-h mb-1">Set your vault passphrase</h1>
+            <p className="text-sm text-mist mb-6">
+              This encrypts everything in your browser before it's stored. We never see it — so
+              keep it safe. If you lose it, your guardians can still recover the vault together.
+            </p>
+            <form onSubmit={doSetup}>
+              <label className="label">Passphrase</label>
+              <input className="field mb-3" type="password" autoFocus value={pass} onChange={(e) => setPass(e.target.value)} placeholder="At least 8 characters" />
+              <label className="label">Confirm passphrase</label>
+              <input className="field mb-4" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+              {err && <p className="text-sm text-ember mb-3">{err}</p>}
+              <button className="btn-primary w-full" disabled={busy || !pass || !confirm}>
+                {busy ? <Loader2 size={16} className="animate-spin" /> : "Create my vault"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {phase === "unlock" && (
+          <div className="card">
+            <span className="grid place-items-center h-11 w-11 rounded-xl bg-ember/10 text-ember mb-4"><Lock size={20} /></span>
+            <h1 className="font-display text-h mb-1">Unlock your vault</h1>
+            <p className="text-sm text-mist mb-6">Enter your passphrase. It's checked in your browser — it never reaches our servers.</p>
+            <form onSubmit={doUnlock}>
+              <label className="label">Passphrase</label>
+              <input className="field mb-4" type="password" autoFocus value={pass} onChange={(e) => setPass(e.target.value)} />
+              {err && <p className="text-sm text-ember mb-3">{err}</p>}
+              <button className="btn-primary w-full" disabled={busy || !pass}>
+                {busy ? <Loader2 size={16} className="animate-spin" /> : "Unlock"}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Shown ONCE, right after the passphrase is set: the 3 guardian recovery codes (Shamir shares
+// of the vault DEK). The owner gives one to each guardian; any 2 rebuild the vault after death,
+// and the server never holds them.
+function RecoveryCodes({ codes = [], threshold = 2, onDone }) {
+  const [copied, setCopied] = useState(-1);
+  const copy = async (i) => {
+    try { await navigator.clipboard.writeText(codes[i]); setCopied(i); setTimeout(() => setCopied(-1), 1400); } catch {}
+  };
+  const download = () => {
+    const body = [
+      "LastLogin — guardian recovery codes",
+      `Any ${threshold} of these ${codes.length} codes can recover the vault. Keep each one private.`,
+      "", ...codes.map((c, i) => `Guardian ${i + 1}:\n${c}\n`),
+    ].join("\n");
+    const url = URL.createObjectURL(new Blob([body], { type: "text/plain" }));
+    const a = document.createElement("a"); a.href = url; a.download = "lastlogin-recovery-codes.txt"; a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="card">
+      <span className="grid place-items-center h-11 w-11 rounded-xl bg-sage/12 text-sage-600 mb-4"><KeyRound size={20} /></span>
+      <h1 className="font-display text-h mb-1">Your guardian recovery codes</h1>
+      <p className="text-sm text-mist mb-1">
+        Give one code to each guardian. Any <span className="text-ink">{threshold}</span> of them can
+        recover your vault together after you're gone — no single guardian, and never us, can do it alone.
+      </p>
+      <p className="text-xs text-ember mb-5">Shown once. Save them now — you won't see them again.</p>
+
+      <div className="space-y-2 mb-5">
+        {codes.map((c, i) => (
+          <button key={i} onClick={() => copy(i)} title="Copy"
+            className="group w-full text-left rounded-xl bg-paper border border-line px-3.5 py-2.5 flex items-center gap-3 hover:border-mist/50 transition">
+            <span className="pill bg-sage/12 text-sage-600 shrink-0">Guardian {i + 1}</span>
+            <span className="mono text-xs text-ink break-all flex-1">{c.slice(0, 18)}…{c.slice(-6)}</span>
+            {copied === i ? <Check size={15} className="text-sage-600 shrink-0" /> : <Copy size={15} className="text-mist group-hover:text-ember shrink-0" />}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        <button className="btn-secondary btn-sm" onClick={download}><Upload size={14} className="rotate-180" /> Download codes</button>
+        <button className="btn-primary btn-sm flex-1" onClick={onDone}>I've saved them — open my vault</button>
+      </div>
     </div>
   );
 }

@@ -13,17 +13,17 @@ r.use(auth);
 // sees the passphrase or the derived key.
 r.get("/key", async (req, res, next) => {
   try {
-    const u = await User.findById(req.user.id).select("vaultSalt vaultVerifier");
-    res.json({ salt: u?.vaultSalt || null, verifier: u?.vaultVerifier || null });
+    const u = await User.findById(req.user.id).select("vaultSalt vaultVerifier vaultWrappedDek");
+    res.json({ salt: u?.vaultSalt || null, verifier: u?.vaultVerifier || null, wrappedDek: u?.vaultWrappedDek || null });
   } catch (e) { next(e); }
 });
 
 r.post("/key", async (req, res, next) => {
   try {
-    const { salt, verifier } = req.body;
+    const { salt, verifier, wrappedDek } = req.body;
     const u = await User.findById(req.user.id).select("vaultSalt");
     if (u?.vaultSalt) return res.status(409).json({ error: "vault key already set" });
-    await User.findByIdAndUpdate(req.user.id, { vaultSalt: salt, vaultVerifier: verifier });
+    await User.findByIdAndUpdate(req.user.id, { vaultSalt: salt, vaultVerifier: verifier, vaultWrappedDek: wrappedDek });
     res.json({ ok: true });
   } catch (e) { next(e); }
 });

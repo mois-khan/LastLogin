@@ -42,3 +42,33 @@ export async function verifyPassphrase(blob, passphrase, saltB64) {
   try { await decryptJSON(blob, await deriveKey(passphrase, saltB64)); return true; }
   catch { return false; }
 }
+
+// --- Data Encryption Key (DEK) ---------------------------------------------
+// The vault is encrypted under one random DEK, NOT directly under the passphrase.
+// That indirection is what makes guardian recovery possible: the same DEK is both
+// (a) wrapped by the passphrase-derived key for the living owner, and (b) Shamir-split
+// across the guardians so any 2 can rebuild it after death. The server sees neither.
+
+const hex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, "0")).join("");
+const unhex = (s) => Uint8Array.from(s.match(/../g).map((h) => parseInt(h, 16)));
+
+/** Fresh random 32-byte DEK (raw bytes — keep in memory only). */
+export function genDek() {
+  return crypto.getRandomValues(new Uint8Array(32));
+}
+
+/** Import raw DEK bytes as a non-extractable AES-GCM key for encrypt/decrypt. */
+export function importDek(rawBytes) {
+  return crypto.subtle.importKey("raw", rawBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+/** Wrap the DEK under a passphrase-derived key → { iv, data } the server stores blindly. */
+export function wrapDek(rawDek, kek) {
+  return encryptJSON({ dek: hex(rawDek) }, kek);
+}
+
+/** Unwrap → raw DEK bytes. Throws if the passphrase (kek) is wrong. */
+export async function unwrapDek(blob, kek) {
+  const { dek } = await decryptJSON(blob, kek);
+  return unhex(dek);
+}
