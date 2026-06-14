@@ -8,6 +8,27 @@ the cloud); the contract is already on Sepolia.
 > use the browser microphone, which browsers **block on plain `http://` or a bare IP**. So the
 > public URL must be `https://…`. The steps below get you free, automatic HTTPS with Caddy.
 
+## Two ways — both free
+
+**A. Render — easiest, truly $0, no server to manage.** Best if you just want it live fast.
+Render's free plan gives automatic HTTPS on a `*.onrender.com` URL (so the mic works) and reads the
+[`render.yaml`](render.yaml) in this repo:
+1. Go to **render.com → New → Blueprint** → connect this GitHub repo.
+2. It picks up `render.yaml`, then prompts you to paste each secret (your keys). Paste them.
+3. Deploy. In ~3 min you get `https://lastlogin-xxxx.onrender.com`. Put that exact URL in
+   **CLIENT_ORIGIN** (Environment tab) and click **Manual Deploy** once more.
+4. MongoDB Atlas → Network Access → allow `0.0.0.0/0` (Render's IPs are dynamic).
+   - Trade-off: the free service **sleeps after ~15 min idle** — open the URL a minute before you
+     demo so it's awake. You don't earn the Vultr sponsor point.
+
+**B. Vultr on free signup credit — keeps the sponsor prize, steadier for a live demo.** New Vultr
+accounts (and the HackPrix sponsor) come with credit that easily covers a small VM for the event,
+so it's free for you. Follow the runbook below — same steps, funded by the credit. A dedicated VM
+means no cold-start while judges watch.
+
+> If you have any Vultr credit, use **B** (free + prize + reliable). If not, **A** is genuinely $0
+> and live in minutes.
+
 ---
 
 ## What you need first
