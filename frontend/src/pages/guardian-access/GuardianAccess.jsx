@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Loader2, ShieldCheck, ArrowRight, ArrowLeft, Upload } from "lucide-react";
+import { Mail, Loader2, ShieldCheck, ArrowRight, ArrowLeft, Upload, Sparkles } from "lucide-react";
 import { api } from "../../lib/api.js";
 import Candle from "../../components/ui/Candle.jsx";
 import GuardianGrantView from "../../components/GuardianGrantView.jsx";
@@ -182,21 +182,20 @@ export default function GuardianAccess() {
           <StatusBar confirmed={confirmed} total={total} threshold={threshold} />
 
           {executing ? (
-            <>
-              <GuardianGrantView
-                name={state.guardianName}
-                messages={state.messages}
-                items={state.items}
-                files={state.files}
-              />
-              <div className="mt-14">
+            <GuardianGrantView
+              name={state.guardianName}
+              messages={state.messages}
+              items={state.items}
+              files={state.files}
+              extraTab={{ key: "talk", label: "Talk", Icon: Sparkles, node: (
                 <CloneChat name={state.ownerName || ownerName}
                   sendMessage={(message, language, withAudio) => api.post("/clone/chat", { token: state.token, message, language, withAudio }).then((r) => r.data)}
                   loadHistory={() => api.post("/clone/history", { token: state.token }).then((r) => r.data)}
                   clearHistory={() => api.post("/clone/history/clear", { token: state.token })}
-                  uploadContext={(file) => { const fd = new FormData(); fd.append("chat", file); fd.append("token", state.token); return api.post("/clone/guardian-context", fd); }} />
-              </div>
-            </>
+                  uploadContext={(file) => { const fd = new FormData(); fd.append("chat", file); fd.append("token", state.token); return api.post("/clone/guardian-context", fd).then((r) => r.data); }}
+                  transcribe={(blob, language) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); fd.append("language", language); fd.append("token", state.token); return api.post("/clone/transcribe", fd).then((r) => r.data.text); }} />
+              ) }}
+            />
           ) : youConfirmed ? (
             // This guardian has already confirmed (via prior cert or upload this visit).
             <div className="card rise">

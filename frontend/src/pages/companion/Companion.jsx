@@ -1,9 +1,36 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Check, Sparkles, Mic, ShieldCheck, ArrowRight } from "lucide-react";
+import { Loader2, Check, Sparkles, Mic, Square, ShieldCheck, ArrowRight } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import CloneChat from "../../components/CloneChat.jsx";
+import { startRecording } from "../../lib/audio.js";
+
+// Speak an answer instead of typing it — record -> Sarvam STT -> text appended to the field.
+function QuestionMic({ onText }) {
+  const [phase, setPhase] = useState("idle"); // idle | rec | stt
+  const recRef = useRef(null);
+  const toggle = async () => {
+    if (phase === "rec") {
+      setPhase("stt");
+      try {
+        const wav = await recRef.current.stop();
+        const fd = new FormData(); fd.append("audio", wav, "answer.wav"); fd.append("language", "unknown");
+        const { data } = await api.post("/clone/transcribe", fd);
+        if (data.text) onText(data.text);
+      } catch { /* ignore */ } finally { setPhase("idle"); recRef.current = null; }
+      return;
+    }
+    try { recRef.current = await startRecording(); setPhase("rec"); } catch { setPhase("idle"); }
+  };
+  return (
+    <button type="button" onClick={toggle} disabled={phase === "stt"} title="Speak your answer"
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition ${phase === "rec" ? "bg-ember text-white animate-pulse" : "border border-line text-mist hover:text-ink"}`}>
+      {phase === "stt" ? <Loader2 size={13} className="animate-spin" /> : phase === "rec" ? <Square size={12} /> : <Mic size={13} />}
+      {phase === "rec" ? "Stop" : phase === "stt" ? "…" : "Speak"}
+    </button>
+  );
+}
 
 // Owner setup: answer a few questions in your own words -> a companion the people you love
 // can talk with later, in your voice. Includes a live preview (talk to yourself).
@@ -59,7 +86,10 @@ export default function Companion() {
         <div className="space-y-4">
           {questions.map((q) => (
             <div key={q.k}>
-              <label className="block text-sm text-graphite mb-1.5">{q.q}</label>
+              <div className="flex items-center justify-between gap-3 mb-1.5">
+                <label className="block text-sm text-graphite">{q.q}</label>
+                <QuestionMic onText={(t) => setAnswers((a) => ({ ...a, [q.k]: (a[q.k] ? a[q.k].trim() + " " : "") + t }))} />
+              </div>
               <textarea className="field" rows={2} placeholder={q.ph} value={answers[q.k] || ""}
                 onChange={(e) => setAnswers((a) => ({ ...a, [q.k]: e.target.value }))} />
             </div>
@@ -88,7 +118,8 @@ export default function Companion() {
           <CloneChat name={persona?.name || "you"}
             sendMessage={(message, language, withAudio) => api.post("/clone/preview", { message, language, withAudio }).then((r) => r.data)}
             loadHistory={() => api.get("/clone/preview/history").then((r) => ({ messages: r.data }))}
-            clearHistory={() => api.delete("/clone/preview/history")} />
+            clearHistory={() => api.delete("/clone/preview/history")}
+            transcribe={(blob, language) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); fd.append("language", language); return api.post("/clone/transcribe", fd).then((r) => r.data.text); }} />
         </>
       )}
 

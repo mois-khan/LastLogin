@@ -1,7 +1,10 @@
 import { Router } from "express";
 import multer from "multer";
+import jwt from "jsonwebtoken";
+import AdmZip from "adm-zip";
 import { auth } from "../middleware/auth.js";
 import { guardianAuth } from "../middleware/guardianAuth.js";
+import * as sarvam from "../services/ai/sarvam.js";
 import User from "../models/User.js";
 import Guardian from "../models/Guardian.js";
 import Persona from "../models/Persona.js";
@@ -35,6 +38,39 @@ async function ownerSecrets(userId) {
     return vals;
   } catch { return []; }
 }
+
+// Accepts the owner's login token (header) OR a guardian session token (body) — for the shared
+// transcription endpoint, which only needs to know the caller is verified, not who.
+function anyAuth(req, res, next) {
+  const h = req.headers.authorization || "";
+  const toks = [req.body?.token, h.startsWith("Bearer ") ? h.slice(7) : null].filter(Boolean);
+  for (const t of toks) { try { jwt.verify(t, process.env.JWT_SECRET); return next(); } catch { /* try next */ } }
+  return res.status(401).json({ error: "unauthorized" });
+}
+
+// A WhatsApp export is a .txt, or a .zip (the "with media" export) holding _chat.txt. Read either.
+function extractChat(file) {
+  const buf = file.buffer;
+  if (buf[0] === 0x50 && buf[1] === 0x4b) { // "PK" -> zip
+    try {
+      const txt = new AdmZip(buf).getEntries().filter((e) => !e.isDirectory && /\.txt$/i.test(e.entryName));
+      const chat = txt.find((e) => /_chat\.txt$/i.test(e.entryName)) || txt[0];
+      return chat ? chat.getData().toString("utf8") : "";
+    } catch { return ""; }
+  }
+  return buf.toString("utf8");
+}
+
+// Voice input -> text (Sarvam Saarika STT). Used by the Companion questions and the Talk box.
+r.post("/transcribe", upload.single("audio"), anyAuth, async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No audio." });
+    const text = await sarvam.stt(req.file.buffer, req.body.language || "unknown", req.file.originalname || "audio.wav");
+    res.json({ text });
+  } catch (e) {
+    res.json({ text: "", error: e.response?.data?.message || e.message });
+  }
+});
 
 // ───────────── OWNER (logged in): build + preview your companion ─────────────
 
@@ -113,11 +149,11 @@ r.post("/guardian-context", upload.single("chat"), guardianAuth, async (req, res
     const { userId, gid } = req.guardian;
     const u = await ensureExecuting(userId, res); if (!u) return;
     const g = await Guardian.findById(gid);
-    const raw = req.file ? req.file.buffer.toString("utf8") : (req.body.text || "");
-    if (!raw.trim()) return res.status(400).json({ error: "Upload your exported chat (.txt) or paste some of it." });
+    const raw = req.file ? extractChat(req.file) : (req.body.text || "");
+    if (!raw.trim()) return res.status(400).json({ error: "Couldn't read that chat. In WhatsApp, open the chat → Export chat → Without media, and upload the .txt or .zip." });
     const summary = await clone.summarizeWhatsApp(raw, u.name, g?.name || "this person");
     await GuardianContext.findOneAndUpdate({ userId, guardianId: gid }, { guardianEmail: g?.email, summary }, { upsert: true });
-    res.json({ ok: true });
+    res.json({ ok: true, summary });
   } catch (e) { next(e); }
 });
 
