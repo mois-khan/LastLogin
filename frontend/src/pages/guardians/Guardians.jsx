@@ -40,7 +40,7 @@ export default function Guardians() {
     finally { setLoadingCfg(false); }
   };
 
-  // Per-guardian grant — flip one asset/file and persist this guardian's full grant list.
+  // Per-guardian grant - flip one asset/file and persist this guardian's full grant list.
   const toggleAsset = async (assetId) => {
     const assets = config.assets.map((a) => (a.id === assetId ? { ...a, granted: !a.granted } : a));
     setConfig((c) => ({ ...c, assets }));
@@ -59,7 +59,7 @@ export default function Guardians() {
   return (
     <div className="rise">
       <h1 className="font-display text-title mb-1">Trusted guardians</h1>
-      <p className="text-mist mb-8 max-w-xl">Choose people you trust. Any 2 together can confirm your passing — and each one sees only the assets you grant them.</p>
+      <p className="text-mist mb-8 max-w-xl">Choose people you trust. Any 2 together can confirm your passing - and each one sees only the assets you grant them.</p>
 
       <div className="card max-w-xl mb-6 flex items-center gap-3">
         <span className="grid place-items-center h-9 w-9 rounded-xl bg-sage/12 text-sage-600 shrink-0"><ShieldCheck size={18} /></span>
@@ -72,7 +72,7 @@ export default function Guardians() {
       {/* Security question */}
       <div className="card max-w-xl mb-6">
         <h3 className="text-h mb-1 flex items-center gap-2"><KeyRound size={18} className="text-graphite" /> Security question <span className="text-xs text-mist font-body">· optional</span></h3>
-        <p className="text-sm text-mist mb-4">An extra layer — a guardian must answer this (plus their emailed code) to confirm.</p>
+        <p className="text-sm text-mist mb-4">An extra layer - a guardian must answer this (plus their emailed code) to confirm.</p>
         <input className="field mb-2" placeholder="e.g. What was the name of our first pet?" value={sq.question}
           onChange={(e) => setSq({ ...sq, question: e.target.value })} />
         <div className="flex gap-2">
@@ -125,13 +125,13 @@ export default function Guardians() {
 
                   {openId === g._id && (
                     <div className="mt-4 ml-12 rounded-xl bg-paper border border-line p-4 rise">
-                      <p className="text-xs text-mist mb-3">These are the assets marked <span className="text-sage-600">Visible / Transfer</span> in your vault — toggle which ones {g.name} receives. Deletion-flagged assets never appear here.</p>
+                      <p className="text-xs text-mist mb-3">These are the assets marked <span className="text-sage-600">Visible / Transfer</span> in your vault - toggle which ones {g.name} receives. Deletion-flagged assets never appear here.</p>
                       {loadingCfg || !config ? (
                         <div className="flex items-center gap-2 text-sm text-mist py-4"><Loader2 size={15} className="animate-spin" /> Loading…</div>
                       ) : (
                         <>
                           {config.assets.length === 0 ? (
-                            <p className="text-sm text-mist py-2">No transferable assets yet — add some in your vault.</p>
+                            <p className="text-sm text-mist py-2">No transferable assets yet - add some in your vault.</p>
                           ) : (
                             <ul className="space-y-2">
                               {config.assets.map((a) => (

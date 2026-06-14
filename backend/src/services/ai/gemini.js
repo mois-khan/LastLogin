@@ -8,7 +8,7 @@ const MODELS = (process.env.GEMINI_MODELS || "gemini-3.1-flash-lite,gemini-3.5-f
 
 function key() {
   const k = process.env.GEMINI_API_KEY;
-  if (!k) throw new Error("GEMINI_API_KEY missing — get one free at https://aistudio.google.com/apikey");
+  if (!k) throw new Error("GEMINI_API_KEY missing - get one free at https://aistudio.google.com/apikey");
   return k;
 }
 
@@ -59,9 +59,9 @@ export async function chatWillAssistant(messages) {
     }
     return { reply: marker !== -1 ? reply.slice(0, marker).trim() : reply.trim(), extracted };
   } catch {
-    // Never leave the user staring at a dead chat — keep the conversation moving.
+    // Never leave the user staring at a dead chat - keep the conversation moving.
     return {
-      reply: "I'm having a brief moment connecting — but I'm still here. While I reconnect: who would you most want to handle your accounts, and is there anything you'd want them to know?",
+      reply: "I'm having a brief moment connecting - but I'm still here. While I reconnect: who would you most want to handle your accounts, and is there anything you'd want them to know?",
       extracted: null,
     };
   }
@@ -79,7 +79,7 @@ export async function verifyDeathCertificate(imageBase64, mimeType = "image/jpeg
     );
     return JSON.parse(text);
   } catch {
-    return { looksValid: false, confidence: 0, deceasedName: null, date: null, reason: "Couldn't verify the document right now — please try again." };
+    return { looksValid: false, confidence: 0, deceasedName: null, date: null, reason: "Couldn't verify the document right now - please try again." };
   }
 }
 
@@ -91,7 +91,7 @@ export async function draftClosureEmail(platform, action = "delete", deceasedNam
     : "permanently close and delete";
   const prompt = `Write a concise, respectful email to ${platform}'s account/support team on behalf of the family,
 requesting they ${ask} the account of ${deceasedName}, who has passed away. State that a death certificate is
-attached. Warm but clear, plain text, ready to send — no unfilled placeholders except [DATE].`;
+attached. Warm but clear, plain text, ready to send - no unfilled placeholders except [DATE].`;
   return (await generate([{ text: prompt }])).trim();
 }
 

@@ -7,7 +7,7 @@ const BASE = "https://api.elevenlabs.io/v1";
 // NOTE: the FREE tier may not include API access. Budget the $5 Starter plan.
 function key() {
   const k = process.env.ELEVENLABS_API_KEY;
-  if (!k) throw new Error("ELEVENLABS_API_KEY missing — Starter plan needed for API access");
+  if (!k) throw new Error("ELEVENLABS_API_KEY missing - Starter plan needed for API access");
   return k;
 }
 

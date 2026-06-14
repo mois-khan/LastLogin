@@ -13,11 +13,11 @@ const FALLBACK_CLIP = path.resolve(__dirname, "../../fixtures/demo-voice.mp3");
  * --ElevenLabs(cloned voice)--> audio.
  *
  * Demo insurance (#23/#41): if a live AI call stalls or is over quota, we never
- * hard-fail the centerpiece — we fall back to a guaranteed pre-generated clip.
+ * hard-fail the centerpiece - we fall back to a guaranteed pre-generated clip.
  * Returns { translatedText, audio (Buffer mp3), targetLang, fallback? }.
  */
 export async function generateLegacyMessage({ text, targetLang = "hi-IN", voiceId, gender }) {
-  if (!voiceId) throw new Error("voiceId required — clone the user's voice first");
+  if (!voiceId) throw new Error("voiceId required - clone the user's voice first");
   try {
     const translatedText = targetLang === "en-IN" ? text : await sarvam.translate(text, targetLang, "en-IN", gender);
     const audio = await eleven.speak(voiceId, translatedText, "eleven_multilingual_v2");

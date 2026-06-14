@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// Media vault — images and files the owner leaves behind. Stored as a base64 data URL
+// Media vault - images and files the owner leaves behind. Stored as a base64 data URL
 // for the hackathon (swap for GridFS/S3 later). Same disposition rule as vault items:
 // "delete" files are never surfaced to any guardian.
 const attachmentSchema = new mongoose.Schema(

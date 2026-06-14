@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-// Minimal ABI — matches contracts/contracts/LastLogin.sol
+// Minimal ABI - matches contracts/contracts/LastLogin.sol
 export const ABI = [
   "function getState() view returns (uint8)",
   "function vaultHash() view returns (bytes32)",
@@ -25,7 +25,7 @@ export function getProvider() {
 
 export function getContract(signerOrProvider) {
   const addr = process.env.CONTRACT_ADDRESS;
-  if (!addr) throw new Error("CONTRACT_ADDRESS missing — deploy first");
+  if (!addr) throw new Error("CONTRACT_ADDRESS missing - deploy first");
   return new ethers.Contract(addr, ABI, signerOrProvider || getProvider());
 }
 

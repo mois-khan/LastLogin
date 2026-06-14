@@ -1,4 +1,4 @@
-// Record from the mic and return a mono 16-bit WAV Blob — the format Sarvam Saarika STT wants.
+// Record from the mic and return a mono 16-bit WAV Blob - the format Sarvam Saarika STT wants.
 // Usage: const rec = await startRecording(); … const wav = await rec.stop();
 export async function startRecording() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

@@ -6,7 +6,7 @@ import * as chain from "../services/blockchain/ethers.js";
 const r = Router();
 r.use(auth);
 
-// "I'm still here" — resets the dead-man's switch (Mongo lastSeen) AND the on-chain
+// "I'm still here" - resets the dead-man's switch (Mongo lastSeen) AND the on-chain
 // proveLife() timer. The on-chain call is best-effort: skipped in a Mongo-only demo.
 r.post("/", async (req, res, next) => {
   try {

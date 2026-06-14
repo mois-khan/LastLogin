@@ -5,7 +5,7 @@ import { split } from "../lib/shamir.js";
 
 // Holds the vault's Data Encryption Key (DEK) IN MEMORY only. It is never written to
 // disk/localStorage or sent to the server. The server stores only: a PBKDF2 salt, a tiny
-// verifier blob, and the DEK *wrapped* by the passphrase-derived key — none of which it
+// verifier blob, and the DEK *wrapped* by the passphrase-derived key - none of which it
 // can open. Locks on reload (you re-enter the passphrase).
 const Ctx = createContext(null);
 
@@ -25,7 +25,7 @@ export function VaultKeyProvider({ children }) {
 
   // First time: create the master passphrase + a fresh DEK. The server receives the salt,
   // a verifier blob, and the passphrase-wrapped DEK. Returns the guardian recovery codes
-  // (Shamir shares of the DEK) for the owner to hand out — they are shown ONCE.
+  // (Shamir shares of the DEK) for the owner to hand out - they are shown ONCE.
   const setup = useCallback(async (passphrase) => {
     const salt = genSalt();
     const kek = await deriveKey(passphrase, salt);

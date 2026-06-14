@@ -1,4 +1,4 @@
-// Zero-knowledge vault crypto — runs in the BROWSER only.
+// Zero-knowledge vault crypto - runs in the BROWSER only.
 // A key is derived from the user's master passphrase via PBKDF2 and never leaves
 // the device. The server stores only AES-256-GCM ciphertext it cannot open.
 const te = new TextEncoder();
@@ -7,7 +7,7 @@ const td = new TextDecoder();
 const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-/** Random 16-byte salt (base64) — stored per user alongside the ciphertext. */
+/** Random 16-byte salt (base64) - stored per user alongside the ciphertext. */
 export function genSalt() {
   return toB64(crypto.getRandomValues(new Uint8Array(16)));
 }
@@ -52,7 +52,7 @@ export async function verifyPassphrase(blob, passphrase, saltB64) {
 const hex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, "0")).join("");
 const unhex = (s) => Uint8Array.from(s.match(/../g).map((h) => parseInt(h, 16)));
 
-/** Fresh random 32-byte DEK (raw bytes — keep in memory only). */
+/** Fresh random 32-byte DEK (raw bytes - keep in memory only). */
 export function genDek() {
   return crypto.getRandomValues(new Uint8Array(32));
 }

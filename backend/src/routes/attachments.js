@@ -4,12 +4,12 @@ import { auth } from "../middleware/auth.js";
 import Attachment from "../models/Attachment.js";
 import Guardian from "../models/Guardian.js";
 
-// Media vault — images and files. Held in memory then stored as a base64 data URL.
+// Media vault - images and files. Held in memory then stored as a base64 data URL.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
 const r = Router();
 r.use(auth);
 
-// List (metadata only — never ship the bytes in the list).
+// List (metadata only - never ship the bytes in the list).
 r.get("/", async (req, res, next) => {
   try {
     const files = await Attachment.find({ userId: req.user.id }).sort({ createdAt: 1 }).select("-dataUrl");

@@ -1,5 +1,5 @@
 // Generate a THROWAWAY Sepolia wallet and write its key into backend/.env.
-// Testnet only — never use this for a wallet that holds real funds.
+// Testnet only - never use this for a wallet that holds real funds.
 // Run: npm run wallet     (from contracts/)   ->  resolves GitHub issue #3 (step 1)
 import { Wallet } from "ethers";
 import fs from "fs";
