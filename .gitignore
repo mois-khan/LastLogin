@@ -13,3 +13,8 @@ contracts/typechain-types/
 backend/src/fixtures/*.mp3
 coverage/
 /tmp/
+
+# local agent config
+.claude/
+# demo wallet keys — NEVER commit private keys (Sepolia throwaway or not)
+contracts/demo-actors.json
