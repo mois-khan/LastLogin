@@ -75,6 +75,8 @@ function VaultBody() {
   const [saving, setSaving] = useState(false);
   const [revealed, setRevealed] = useState({});
   const [fp, setFp] = useState("");
+  const [sealTx, setSealTx] = useState(null); // on-chain anchor tx hash, if anchored
+  const [sealing, setSealing] = useState(false);
   const [tab, setTab] = useState("accounts"); // accounts | files
 
   const load = async () => setItems((await api.get("/vault")).data);
@@ -120,7 +122,14 @@ function VaultBody() {
     await api.patch(`/vault/${i.id}/disposition`, { disposition: next });
   };
   const remove = async (id) => { setItems((a) => a.filter((x) => x.id !== id)); await api.delete(`/vault/${id}`); };
-  const anchor = async () => setFp((await api.get("/vault/fingerprint")).data.fingerprint);
+  const anchor = async () => {
+    setSealing(true);
+    try {
+      const { data } = await api.get("/vault/fingerprint");
+      setFp(data.fingerprint);
+      setSealTx(data.txHash || null); // present only when anchored on Sepolia
+    } finally { setSealing(false); }
+  };
 
   const activeProvider = type === "account" ? platform : null;
 
@@ -194,7 +203,7 @@ function VaultBody() {
         <div className="lg:col-span-3">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-h">{items?.length ?? "…"} item{items?.length === 1 ? "" : "s"}</h3>
-            <button className="btn-secondary btn-sm" onClick={anchor} disabled={!items?.length}>Seal this vault</button>
+            <button className="btn-secondary btn-sm" onClick={anchor} disabled={!items?.length || sealing}>{sealing ? "Sealing…" : "Seal this vault"}</button>
           </div>
 
           {items === null ? (
@@ -247,8 +256,22 @@ function VaultBody() {
 
           {fp && (
             <div className="mt-4 rounded-xl bg-paper border border-line p-3 rise">
-              <p className="text-xs text-mist mb-1">Sealed. This is the proof your family's records were never altered.</p>
+              <p className="text-xs text-mist mb-1">
+                {sealTx
+                  ? "Sealed on-chain. This fingerprint is now anchored on Ethereum — proof your family's records were never altered."
+                  : "Sealed. This fingerprint is the proof your family's records were never altered."}
+              </p>
               <p className="mono text-xs break-all text-ink">{fp}</p>
+              {sealTx && (
+                <a
+                  className="mono text-xs text-ember hover:underline break-all mt-1 inline-block"
+                  href={`https://sepolia.etherscan.io/tx/${sealTx}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View anchor on Etherscan ↗
+                </a>
+              )}
             </div>
           )}
 

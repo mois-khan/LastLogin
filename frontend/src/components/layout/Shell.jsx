@@ -1,7 +1,39 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
-import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
+import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight, MessageCircle, Heart } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { api } from "../../lib/api.js";
 import ThemeToggle from "../ui/ThemeToggle.jsx";
+
+// Show a gentle nudge once the dead-man's switch has been quiet for a while. The owner can
+// reset it (Mongo lastSeen + on-chain proveLife) without leaving whatever page they're on.
+const INACTIVE_DAYS = 7;
+
+function InactivityBanner() {
+  const [days, setDays] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.get("/proof-of-life/status").then(({ data }) => setDays(data.daysInactive)).catch(() => {});
+  }, []);
+  if (days === null || days < INACTIVE_DAYS) return null;
+  const stillHere = async () => {
+    setBusy(true);
+    try { await api.post("/proof-of-life"); setDays(0); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="border-b border-line bg-ember/8">
+      <div className="mx-auto max-w-content px-6 py-2.5 flex items-center justify-between gap-3 text-sm">
+        <span className="text-ink">
+          It's been <strong>{days} days</strong> since we last heard from you. A long silence is what wakes your guardians.
+        </span>
+        <button onClick={stillHere} disabled={busy} className="btn-primary btn-sm whitespace-nowrap">
+          <Heart size={14} strokeWidth={2} /> {busy ? "…" : "I'm still here"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const links = [
   { to: "/app/assistant", label: "Guide", Icon: Sparkles },
@@ -48,6 +80,8 @@ export default function Shell() {
           </div>
         </div>
       </header>
+
+      <InactivityBanner />
 
       <main className="mx-auto max-w-content px-6 py-12">
         <Outlet />

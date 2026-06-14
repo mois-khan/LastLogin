@@ -4,6 +4,7 @@ import VaultItem from "../models/VaultItem.js";
 import User from "../models/User.js";
 import Guardian from "../models/Guardian.js";
 import { encrypt, decrypt, vaultFingerprint } from "../services/crypto/vault.js";
+import * as chain from "../services/blockchain/ethers.js";
 
 const r = Router();
 r.use(auth);
@@ -89,11 +90,18 @@ r.get("/:id/reveal", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Integrity fingerprint of the whole vault — what gets anchored on-chain.
+// Seal: compute the vault's integrity fingerprint AND anchor it on-chain (setVaultHash),
+// so "sealed" is a real, tamper-evident commitment on Sepolia — not just a local hash.
+// Anchoring is best-effort: a Mongo-only demo (no contract/keys configured) still returns
+// the fingerprint, just without a txHash.
 r.get("/fingerprint", async (req, res, next) => {
   try {
     const items = await VaultItem.find({ userId: req.user.id });
-    res.json({ fingerprint: vaultFingerprint(items) });
+    const fingerprint = vaultFingerprint(items);
+    let txHash = null;
+    try { txHash = await chain.anchorVaultHash(fingerprint); }
+    catch (e) { console.warn("vault anchor skipped:", e.message); }
+    res.json({ fingerprint, txHash });
   } catch (e) { next(e); }
 });
 

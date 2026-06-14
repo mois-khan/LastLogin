@@ -16,6 +16,7 @@ import triggerRoutes from "./routes/trigger.js";
 import accountRoutes from "./routes/accounts.js";
 import attachmentRoutes from "./routes/attachments.js";
 import cloneRoutes from "./routes/clone.js";
+import { startTimeCapsuleWorker } from "./services/delivery/timeCapsule.js";
 
 dotenv.config();
 
@@ -53,7 +54,10 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 connectDB()
-  .then(() => app.listen(PORT, () => console.log(`LastLogin backend on :${PORT}`)))
+  .then(() => {
+    app.listen(PORT, () => console.log(`LastLogin backend on :${PORT}`));
+    startTimeCapsuleWorker(); // deliver scheduled time-capsule messages when their date arrives
+  })
   .catch((e) => {
     console.error("Startup failed:", e.message);
     // Start anyway so non-DB routes (health) work during a demo if Atlas hiccups
