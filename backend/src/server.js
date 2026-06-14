@@ -12,6 +12,7 @@ import aiRoutes from "./routes/ai.js";
 import triggerRoutes from "./routes/trigger.js";
 import accountRoutes from "./routes/accounts.js";
 import attachmentRoutes from "./routes/attachments.js";
+import cloneRoutes from "./routes/clone.js";
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/trigger", triggerRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/attachments", attachmentRoutes);
+app.use("/api/clone", cloneRoutes);
 
 app.use(errorHandler);
 

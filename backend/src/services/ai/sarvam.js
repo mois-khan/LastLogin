@@ -14,14 +14,14 @@ function headers() {
  * targetLang e.g. "hi-IN", "ta-IN", "te-IN", "mr-IN". This is the India-first
  * intelligence: it handles transliteration and code-mixing better than generic MT.
  */
-export async function translate(text, targetLang = "hi-IN", sourceLang = "en-IN") {
-  const { data } = await axios.post(
-    `${BASE}/translate`,
-    // "modern-colloquial" = natural spoken Hindi/Telugu with English mixed in where it
-    // sounds real (Hinglish when needed) — warmer than stiff formal translation.
-    { input: text, source_language_code: sourceLang, target_language_code: targetLang, mode: "modern-colloquial" },
-    { headers: headers() }
-  );
+export async function translate(text, targetLang = "hi-IN", sourceLang = "en-IN", gender) {
+  // "modern-colloquial" = natural spoken Hindi/Telugu with English mixed in where it
+  // sounds real (Hinglish when needed) — warmer than stiff formal translation.
+  const body = { input: text, source_language_code: sourceLang, target_language_code: targetLang, mode: "modern-colloquial" };
+  // speaker_gender fixes gendered verbs in the OUTPUT — "karta hu" (Male) vs "karti hu" (Female).
+  if (gender === "male") body.speaker_gender = "Male";
+  else if (gender === "female") body.speaker_gender = "Female";
+  const { data } = await axios.post(`${BASE}/translate`, body, { headers: headers() });
   return data.translated_text;
 }
 

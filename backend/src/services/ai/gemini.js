@@ -35,6 +35,11 @@ async function generate(parts, { json = false, system } = {}) {
   throw lastErr;
 }
 
+/** Generic single-turn completion with an optional system instruction. */
+export async function complete(prompt, { system } = {}) {
+  return (await generate([{ text: prompt }], { system })).trim();
+}
+
 const WILL_SYSTEM = `You are the LastLogin guide: a warm, calm companion helping someone
 prepare their digital estate. Ask ONE gentle question at a time. Cover: important
 online accounts, any crypto and who should inherit it, 2-3 trusted guardians, and

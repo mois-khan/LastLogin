@@ -9,6 +9,7 @@ import Messages from "./pages/messages/Messages.jsx";
 import FamilyDashboard from "./pages/family-dashboard/FamilyDashboard.jsx";
 import ReportPassing from "./pages/report/ReportPassing.jsx";
 import Executor from "./pages/executor/Executor.jsx";
+import Companion from "./pages/companion/Companion.jsx";
 import Inbox from "./pages/inbox/Inbox.jsx";
 import GuardianPortal from "./pages/guardian-portal/GuardianPortal.jsx";
 import GuardianAccess from "./pages/guardian-access/GuardianAccess.jsx";
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="vault" element={<Vault />} />
         <Route path="guardians" element={<Guardians />} />
         <Route path="messages" element={<Messages />} />
+        <Route path="companion" element={<Companion />} />
         <Route path="executor" element={<Executor />} />
       </Route>
     </Routes>

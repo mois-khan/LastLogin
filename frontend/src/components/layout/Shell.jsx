@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation, Link } from "react-router-dom";
-import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight } from "lucide-react";
+import { Sparkles, Lock, Users, Mic, Flame, LogOut, Mail, ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const links = [
@@ -7,6 +7,7 @@ const links = [
   { to: "/app/vault", label: "Vault", Icon: Lock },
   { to: "/app/guardians", label: "Guardians", Icon: Users },
   { to: "/app/messages", label: "Messages", Icon: Mic },
+  { to: "/app/companion", label: "Companion", Icon: MessageCircle },
   { to: "/app/executor", label: "Closures", Icon: Mail },
 ];
 
