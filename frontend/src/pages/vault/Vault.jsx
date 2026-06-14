@@ -72,6 +72,7 @@ export default function Vault() {
   const [saving, setSaving] = useState(false);
   const [revealed, setRevealed] = useState({});
   const [fp, setFp] = useState("");
+  const [tab, setTab] = useState("accounts"); // accounts | files
 
   const load = async () => setItems((await api.get("/vault")).data);
   useEffect(() => { load().catch(() => setItems([])); }, []);
@@ -117,8 +118,14 @@ export default function Vault() {
   return (
     <div className="rise">
       <h1 className="font-display text-title mb-1">Your vault</h1>
-      <p className="text-mist mb-8 max-w-xl">The real details your family will need — encrypted at rest, released only to the guardians you choose.</p>
+      <p className="text-mist mb-6 max-w-xl">The real details your family will need — encrypted at rest, released only to the guardians you choose.</p>
 
+      <div className="seg mb-8">
+        <button className={`seg-btn ${tab === "accounts" ? "seg-btn-active" : ""}`} onClick={() => setTab("accounts")}><Lock size={15} /> Accounts & assets</button>
+        <button className={`seg-btn ${tab === "files" ? "seg-btn-active" : ""}`} onClick={() => setTab("files")}><Paperclip size={15} /> Files & media</button>
+      </div>
+
+      {tab === "files" ? <FileVault /> : (
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Add */}
         <div className="card lg:col-span-2 self-start">
@@ -178,7 +185,7 @@ export default function Vault() {
         <div className="lg:col-span-3">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-h">{items?.length ?? "…"} item{items?.length === 1 ? "" : "s"}</h3>
-            <button className="btn-secondary btn-sm" onClick={anchor} disabled={!items?.length}>Anchor integrity hash</button>
+            <button className="btn-secondary btn-sm" onClick={anchor} disabled={!items?.length}>Seal this vault</button>
           </div>
 
           {items === null ? (
@@ -203,8 +210,8 @@ export default function Vault() {
                         <span className="block text-xs text-mist">{i.platform || i.type}</span>
                       </span>
                       {del
-                        ? <span className="pill bg-mist/10 text-mist border border-line"><Ban size={12} /> Deletion request</span>
-                        : <span className="pill bg-sage/12 text-sage-600"><Send size={12} /> Visible / Transfer</span>}
+                        ? <span className="pill bg-mist/10 text-mist border border-line"><Ban size={12} /> Close quietly</span>
+                        : <span className="pill bg-sage/12 text-sage-600"><Send size={12} /> Pass on</span>}
                       <button className="btn-secondary btn-sm" onClick={() => reveal(i.id)}>{fields ? "Hide" : "Reveal"}</button>
                       <button className="text-mist hover:text-ember p-1.5 rounded-lg hover:bg-line/40 transition" title="Remove" onClick={() => remove(i.id)}><Trash2 size={15} /></button>
                     </div>
@@ -231,25 +238,23 @@ export default function Vault() {
 
           {fp && (
             <div className="mt-4 rounded-xl bg-paper border border-line p-3 rise">
-              <p className="text-xs text-mist mb-1">Tamper-proof fingerprint (anchored on-chain):</p>
+              <p className="text-xs text-mist mb-1">Sealed. This is the proof your family's records were never altered.</p>
               <p className="mono text-xs break-all text-ink">{fp}</p>
             </div>
           )}
 
           <p className="mt-6 flex items-center gap-2 text-xs text-mist">
-            <ShieldCheck size={14} className="text-sage-600" /> Encrypted at rest. <span className="text-ink">Deletion-request</span> items are closed on your passing and never shown to a guardian.
+            <ShieldCheck size={14} className="text-sage-600" /> Encrypted at rest. <span className="text-ink">Pass on</span> items reach the guardians you choose; items you <span className="text-ink">close</span> are quietly shut down when you're gone, and never shown to anyone.
           </p>
         </div>
       </div>
-
-      {/* Files & media — the file vault now lives here, alongside the accounts. */}
-      <FileVault />
+      )}
     </div>
   );
 }
 
 // The file vault: upload, list, set each file's disposition, delete. Mirrors the
-// account items' "Visible / Transfer" vs "Deletion request" lifecycle.
+// account items' "Pass on" vs "Close quietly" lifecycle.
 function FileVault() {
   const [files, setFiles] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -283,12 +288,8 @@ function FileVault() {
   const onDrop = (e) => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); };
 
   return (
-    <section className="mt-10">
-      <div className="flex items-center gap-2 mb-1">
-        <Paperclip size={18} className="text-ember" />
-        <h2 className="font-display text-h">Files &amp; media</h2>
-      </div>
-      <p className="text-mist mb-4 max-w-xl text-sm">Photos, scanned documents, a will, a video — kept encrypted and released to the guardians you choose, just like your accounts.</p>
+    <section className="rise">
+      <p className="text-mist mb-5 max-w-xl text-sm">Photos, scanned documents, a will, a video — kept encrypted and released to the guardians you choose, just like your accounts.</p>
 
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Dropzone */}
@@ -335,8 +336,8 @@ function FileVault() {
                         <span className="block text-xs text-mist">{[f.mimeType, fmtSize(f.size)].filter(Boolean).join(" · ")}</span>
                       </span>
                       {del
-                        ? <span className="pill bg-mist/10 text-mist border border-line"><Ban size={12} /> Deletion request</span>
-                        : <span className="pill bg-sage/12 text-sage-600"><Send size={12} /> Visible / Transfer</span>}
+                        ? <span className="pill bg-mist/10 text-mist border border-line"><Ban size={12} /> Close quietly</span>
+                        : <span className="pill bg-sage/12 text-sage-600"><Send size={12} /> Pass on</span>}
                       <button className="text-mist hover:text-ember p-1.5 rounded-lg hover:bg-line/40 transition" title="Remove" onClick={() => remove(f.id)}><Trash2 size={15} /></button>
                     </div>
                     <div className="mt-3 ml-12">
@@ -353,11 +354,11 @@ function FileVault() {
   );
 }
 
-// Two-state lifecycle selector — Visible/Transfer vs Deletion request.
+// Two-state lifecycle selector — Visible/Transfer vs Close quietly.
 function DispositionSelector({ value, onChange, small, className = "" }) {
   const opts = [
-    { v: "transfer", label: "Visible / Transfer", Icon: Send },
-    { v: "delete", label: "Deletion request", Icon: Ban },
+    { v: "transfer", label: "Pass on", Icon: Send },
+    { v: "delete", label: "Close quietly", Icon: Ban },
   ];
   return (
     <div className={`inline-flex rounded-xl border border-line p-0.5 ${className}`}>

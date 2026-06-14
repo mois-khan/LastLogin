@@ -1,7 +1,12 @@
-import { Lock, Download, AudioLines, Paperclip, KeyRound } from "lucide-react";
+import { useState } from "react";
+import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip } from "lucide-react";
+import { providerIcon } from "../lib/providers.js";
+import AudioPlayer from "./ui/AudioPlayer.jsx";
+import Candle from "./ui/Candle.jsx";
 
-// One estate's grants for a verified guardian, in strict order: messages (audio + text)
-// first, then the accounts/assets they were given, then files, then a single export.
+// One estate's grants for a verified guardian, given the weight it deserves: the messages
+// first (a letter in their own voice), then the accounts they were entrusted with (copyable,
+// secrets hidden until revealed), then files, then a quiet export.
 // Reused by /access (the universal hub) and /guardian/:userId.
 export default function GuardianGrantView({ name, messages = [], items = [], files = [] }) {
   const hasAny = messages.length + items.length + files.length > 0;
@@ -16,7 +21,7 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
     if (items.length) {
       lines.push("=== ACCOUNTS & ASSETS ===");
       items.forEach((it) => {
-        lines.push(`\n• ${it.label} [${it.platform || it.type}]`);
+        lines.push(`\n- ${it.label} [${it.platform || it.type}]`);
         if (it.locked) lines.push("  (encrypted — opens with the guardian quorum)");
         else Object.entries(it.fields || {}).forEach(([k, v]) => lines.push(`  ${k}: ${v}`));
       });
@@ -30,70 +35,136 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
     }, 200 * (i + 1)));
   };
 
-  if (!hasAny) return <p className="text-mist text-sm">Nothing was assigned to you.</p>;
+  if (!hasAny) {
+    return (
+      <div className="text-center py-12">
+        <Candle size={64} still />
+        <p className="text-mist text-sm max-w-sm mx-auto mt-5 leading-relaxed">
+          There was nothing left specifically in your care — but thank you for being someone {name || "they"} trusted.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <section className="mb-8">
-        <h3 className="font-display text-h mb-3 flex items-center gap-2"><AudioLines size={18} className="text-ember" /> Their messages</h3>
-        {messages.length ? (
-          <div className="space-y-3">
-            {messages.map((m) => (
-              <div key={m.id} className="card rise">
-                <p className="text-xs uppercase tracking-wide text-mist mb-1">For {m.recipientName || "the family"}</p>
-                <p className="text-sm text-graphite leading-relaxed mb-3">{m.text}</p>
+    <div className="space-y-14">
+      {/* 1 — the messages: a letter, in their own voice */}
+      {messages.length > 0 && (
+        <section>
+          <SectionHead label="In their words" sub="Read slowly. There's no rush." />
+          <div className="space-y-4">
+            {messages.map((m, i) => (
+              <article key={m.id} className="surface p-8 rise" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
+                <p className="eyebrow mb-4">For {m.recipientName || "the family"}</p>
+                <p className="font-display text-[1.2rem] sm:text-[1.35rem] leading-[1.7] text-ink max-w-[34rem]">{m.text}</p>
                 {m.audioUrl && (
-                  <>
-                    <audio controls src={m.audioUrl} className="w-full" />
-                    <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 mt-2 text-xs text-ember hover:underline"><Download size={13} /> Download</a>
-                  </>
+                  <div className="mt-6">
+                    <AudioPlayer src={m.audioUrl} />
+                    <div className="mt-2.5 flex items-center justify-between">
+                      <span className="text-xs text-mist">In their own voice</span>
+                      <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 text-xs text-ember hover:underline"><Download size={12} /> Save audio</a>
+                    </div>
+                  </div>
                 )}
-              </div>
+              </article>
             ))}
           </div>
-        ) : <p className="text-sm text-mist">No messages were left.</p>}
-      </section>
-
-      <section className="mb-8">
-        <h3 className="font-display text-h mb-3 flex items-center gap-2"><KeyRound size={18} className="text-ember" /> Accounts & assets</h3>
-        {items.length ? (
-          <div className="space-y-3">
-            {items.map((it, idx) => (
-              <div key={idx} className="card rise">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="flex-1 font-medium">{it.label}</span>
-                  <span className="pill bg-paper text-mist border border-line">{it.platform || it.type}</span>
-                </div>
-                {it.locked ? (
-                  <p className="text-xs text-mist flex items-center gap-1.5"><Lock size={12} /> Encrypted — opens when 2 guardians combine their keys.</p>
-                ) : (
-                  <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-                    {Object.entries(it.fields || {}).map(([k, v]) => (
-                      <div key={k}><dt className="text-xs uppercase tracking-wide text-mist">{k}</dt><dd className="mono text-ink break-words">{v}</dd></div>
-                    ))}
-                  </dl>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : <p className="text-sm text-mist">No accounts were shared with you.</p>}
-      </section>
-
-      {files.length > 0 && (
-        <section className="mb-8">
-          <h3 className="font-display text-h mb-3 flex items-center gap-2"><Paperclip size={18} className="text-ember" /> Files</h3>
-          <ul className="space-y-2">
-            {files.map((f) => (
-              <li key={f.id} className="card flex items-center gap-3 !py-3">
-                <span className="flex-1 min-w-0 text-sm truncate">{f.name}</span>
-                <a href={f.dataUrl} download={f.name} className="btn-secondary btn-sm"><Download size={13} /> Download</a>
-              </li>
-            ))}
-          </ul>
         </section>
       )}
 
-      <button className="btn-primary w-full" onClick={downloadAll}><Download size={16} /> Download everything</button>
-    </>
+      {/* 2 — the accounts entrusted to this guardian */}
+      {items.length > 0 && (
+        <section>
+          <SectionHead label="Entrusted to you" sub="Tap any value to copy it." />
+          <div className="space-y-4">
+            {items.map((it, idx) => {
+              const Icon = (it.platform && providerIcon(it.platform)) || Paperclip;
+              return (
+                <article key={idx} className="surface p-6 rise" style={{ animationDelay: `${Math.min(idx, 6) * 50}ms` }}>
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={19} /></span>
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink truncate">{it.label}</p>
+                      <p className="eyebrow mt-0.5">{it.platform || it.type}</p>
+                    </div>
+                  </div>
+                  {it.locked ? (
+                    <p className="text-xs text-mist flex items-center gap-1.5 bg-paper/70 rounded-xl px-3 py-2.5"><Lock size={13} /> Encrypted — opens when two guardians combine their keys.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(it.fields || {}).map(([k, v]) => <Cred key={k} field={k} value={String(v)} />)}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 3 — files */}
+      {files.length > 0 && (
+        <section>
+          <SectionHead label="Files & media" />
+          <div className="space-y-2">
+            {files.map((f) => {
+              const Glyph = /^image\//.test(f.mimeType || "") ? ImageIcon : Paperclip;
+              return (
+                <div key={f.id} className="surface flex items-center gap-3.5 px-4 py-3 rise">
+                  <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-graphite shrink-0"><Glyph size={17} /></span>
+                  <span className="flex-1 min-w-0 text-sm text-ink truncate">{f.name}</span>
+                  <a href={f.dataUrl} download={f.name} className="btn-secondary btn-sm"><Download size={13} /> Download</a>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* 4 — a quiet way to keep a copy of it all */}
+      <div className="pt-2">
+        <button className="btn-secondary btn-sm" onClick={downloadAll}><Download size={14} /> Save a copy of everything</button>
+      </div>
+    </div>
+  );
+}
+
+function SectionHead({ label, sub }) {
+  return (
+    <div className="mb-6">
+      <h2 className="font-display text-[1.625rem] leading-[1.18] tracking-[-0.015em] text-ink">{label}</h2>
+      {sub && <p className="text-sm text-mist mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+// A single credential row — masks secrets, reveals on demand, copies on tap. A non-interactive
+// container with SIBLING buttons (copy + reveal) so both are keyboard-reachable.
+const SECRET_RE = /pass|secret|seed|private|pin|cvv|key|otp/i;
+function Cred({ field, value }) {
+  const secret = SECRET_RE.test(field);
+  const [show, setShow] = useState(!secret);
+  const [copied, setCopied] = useState(false);
+  const label = field.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1400); } catch {}
+  };
+  return (
+    <div className="group flex items-center gap-2 rounded-xl bg-paper/60 hover:bg-paper px-3.5 py-2.5 transition">
+      <button onClick={copy} aria-label={`Copy ${label}`} className="min-w-0 flex-1 text-left rounded-lg focus-visible:outline-none focus-visible:shadow-focus">
+        <p className="eyebrow mb-0.5">{label}</p>
+        <p className="mono text-sm text-ink break-all">{show ? value : "•".repeat(Math.min(12, value.length || 8))}</p>
+      </button>
+      <span aria-live="polite" className="sr-only">{copied ? "Copied" : ""}</span>
+      {secret && (
+        <button onClick={() => setShow((s) => !s)} aria-label={show ? "Hide value" : "Show value"} aria-pressed={show}
+          className="text-mist hover:text-ink p-1.5 shrink-0 rounded-lg focus-visible:outline-none focus-visible:shadow-focus">
+          {show ? <EyeOff size={15} /> : <Eye size={15} />}
+        </button>
+      )}
+      <button onClick={copy} aria-label={`Copy ${label}`} className="shrink-0 p-1.5 rounded-lg focus-visible:outline-none focus-visible:shadow-focus">
+        {copied ? <Check size={15} className="text-sage-600" /> : <Copy size={15} className="text-mist group-hover:text-ember" />}
+      </button>
+    </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Sparkles, Loader2, Check, AudioLines, Download, Plus, X, Globe, Users } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
+import AudioPlayer from "../../components/ui/AudioPlayer.jsx";
 
 const LANGS = [
   { code: "hi-IN", label: "Hindi" },
@@ -84,36 +85,36 @@ export default function Messages() {
   const tone = { ok: "text-sage-600", err: "text-ember", busy: "text-graphite" };
 
   return (
-    <div className="rise">
+    <div className="rise max-w-2xl mx-auto">
       <h1 className="font-display text-title mb-1">Final messages</h1>
       <p className="text-mist mb-8 max-w-xl">Leave words for the people who matter — in your own voice, in their language.</p>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* 1 — voice */}
-        <div className="card self-start">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="grid place-items-center h-6 w-6 rounded-full bg-ember text-white text-xs">1</span>
-            <h3 className="text-h">Your voice</h3>
+      <div className="space-y-5">
+        {/* 1 — voice (slim banner) */}
+        <div className="card !p-4 flex items-center gap-4">
+          <span className="grid place-items-center h-8 w-8 rounded-full bg-line/60 text-graphite text-xs shrink-0">1</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm text-ink">Your voice</p>
+            <p className="text-xs text-mist">A calm 60-second reading — quiet room, clear voice.</p>
           </div>
           {cloning ? (
-            <div className="flex items-center gap-2 text-sm text-graphite"><Loader2 size={16} className="animate-spin text-ember" /> Cloning your voice…</div>
+            <span className="flex items-center gap-2 text-sm text-graphite shrink-0"><Loader2 size={16} className="animate-spin text-ember" /> Cloning…</span>
           ) : voiceId ? (
-            <div className="flex items-center justify-between">
-              <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Voice cloned</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Cloned</span>
               <button className="btn-ghost btn-sm" onClick={startRec}><Mic size={14} /> Re-record</button>
             </div>
           ) : (
-            <button className={recording ? "btn-secondary" : "btn-primary"} onClick={recording ? stopRec : startRec}>
-              {recording ? <><Square size={15} /> Stop recording</> : <><Mic size={15} /> Record 60s sample</>}
+            <button className={`shrink-0 ${recording ? "btn-secondary" : "btn-primary"}`} onClick={recording ? stopRec : startRec}>
+              {recording ? <><Square size={15} /> Stop</> : <><Mic size={15} /> Record 60s</>}
             </button>
           )}
-          <p className="text-xs text-mist mt-3 leading-relaxed">A calm 60-second reading is enough. Quiet room, clear voice.</p>
         </div>
 
         {/* 2 — compose */}
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
-            <span className="grid place-items-center h-6 w-6 rounded-full bg-ember text-white text-xs">2</span>
+            <span className="grid place-items-center h-8 w-8 rounded-full bg-line/60 text-graphite text-xs">2</span>
             <h3 className="text-h">Write the message</h3>
           </div>
 
@@ -180,7 +181,7 @@ export default function Messages() {
         <div className="card mt-6 max-w-2xl rise">
           <div className="flex items-center gap-2 mb-3 text-sage-600"><AudioLines size={18} /><h3 className="text-h text-ink">Preview</h3></div>
           <p className="text-graphite leading-relaxed mb-4">{result.translatedText}</p>
-          <audio controls src={result.audioUrl} className="w-full" />
+          <AudioPlayer src={result.audioUrl} />
           <a href={result.audioUrl} download="lastlogin-message.mp3" className="btn-secondary btn-sm mt-3"><Download size={14} /> Download</a>
         </div>
       )}
@@ -205,7 +206,7 @@ export default function Messages() {
                 <p className="text-sm text-graphite leading-relaxed mb-3">{m.text}</p>
                 {m.audioUrl && (
                   <>
-                    <audio controls src={m.audioUrl} className="w-full" />
+                    <AudioPlayer src={m.audioUrl} />
                     <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 mt-2 text-xs text-ember hover:underline"><Download size={13} /> Download</a>
                   </>
                 )}
