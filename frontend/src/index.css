@@ -2,75 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root { color-scheme: dark; }
 
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: radial-gradient(1100px 520px at 50% -10%, #FFFDF8 0%, #FBF7F0 60%);
+  /* near-black with a single warm glow at the top — the candle's light bleeding into the page */
+  background: radial-gradient(1200px 660px at 50% -16%, rgba(243, 162, 76, 0.08), transparent 60%), #0A0A0E;
   background-attachment: fixed;
-  color: #2B2A28;
+  color: #F4F4F7;
   font-family: "Inter", system-ui, sans-serif;
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; color: #2B2A28; }
-::selection { background: rgba(200, 116, 58, 0.18); }
+h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; color: #F4F4F7; }
+::selection { background: rgba(243, 162, 76, 0.28); color: #fff; }
 
 @layer base {
-  /* sensible default hierarchy so screens read as designed, not defaulted */
   h1 { @apply text-title md:text-hero; }
   h2 { @apply text-h md:text-title; }
   h3 { @apply text-h; }
   a { @apply transition-colors; }
-  /* one consistent, on-brand focus ring that follows each element's shape — never invisible */
   *:focus-visible { @apply outline-none shadow-focus; }
 }
 
 @layer components {
-  /* Bordered card — softer hairline + a more diffuse, layered shadow reads as a physical card. */
-  .card { @apply bg-card border border-line/70 rounded-[1.25rem] p-6 shadow-[0_1px_2px_rgba(43,42,40,0.03),_0_18px_46px_-28px_rgba(43,42,40,0.20)]; }
-  .card-hover { @apply transition duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_2px_6px_rgba(43,42,40,0.05),_0_30px_64px_-32px_rgba(43,42,40,0.28)]; }
-  /* Borderless surface — for the reverent content (messages, granted items): depth without lines. */
-  .surface { @apply bg-card rounded-[1.25rem] shadow-[0_2px_4px_rgba(43,42,40,0.02),_0_22px_60px_-34px_rgba(43,42,40,0.24)]; }
+  /* Elevated card — a lighter surface, a hairline, a top highlight + soft drop reads as glass on dark. */
+  .card { @apply bg-card border border-line rounded-[1.25rem] p-6 shadow-card; }
+  .card-hover { @apply transition duration-300 ease-out hover:-translate-y-0.5 hover:border-white/10 hover:shadow-lift; }
+  /* Borderless-feel surface for reverent content (messages, granted items) — floats above the page. */
+  .surface { @apply bg-card border border-white/[0.06] rounded-[1.25rem] shadow-lift; }
 
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium tracking-tight transition duration-200 focus-visible:shadow-focus disabled:opacity-40 disabled:cursor-not-allowed; }
-  .btn-primary { @apply btn bg-ember text-white shadow-[0_1px_2px_rgba(200,116,58,0.40),_0_10px_24px_-12px_rgba(200,116,58,0.55)] hover:bg-ember-600 active:translate-y-px; }
-  .btn-secondary { @apply btn border border-line bg-card text-ink hover:bg-paper hover:border-mist/40 active:translate-y-px; }
-  .btn-ghost { @apply btn text-graphite hover:text-ink hover:bg-line/50; }
+  /* dark, confident label on a glowing amber fill */
+  .btn-primary { @apply btn bg-ember text-paper font-semibold shadow-glow hover:bg-ember-600 active:translate-y-px; }
+  .btn-secondary { @apply btn border border-line bg-card text-ink hover:bg-white/[0.04] hover:border-white/15 active:translate-y-px; }
+  .btn-ghost { @apply btn text-graphite hover:text-ink hover:bg-white/[0.05]; }
   .btn-sm { @apply px-3.5 py-1.5 text-[13px]; }
-  /* keep legacy alias so older screens don't break mid-migration */
   .btn-ember { @apply btn-primary; }
 
-  .field { @apply w-full rounded-xl border border-line bg-cloud px-4 py-3 text-sm text-ink transition placeholder:text-mist/55 focus:border-ember focus:shadow-focus focus:bg-card; }
+  .field { @apply w-full rounded-xl border border-line bg-cloud px-4 py-3 text-sm text-ink transition placeholder:text-mist/60 focus:border-ember focus:shadow-focus focus:bg-card; }
   .label { @apply block text-xs font-medium uppercase tracking-[0.08em] text-mist mb-1.5; }
-  /* quiet section eyebrow */
   .eyebrow { @apply text-[0.7rem] font-medium uppercase tracking-[0.16em] text-mist; }
 
   .pill { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium; }
   .chip { @apply inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition cursor-pointer select-none; }
 
-  /* segmented control (e.g. Vault: Accounts / Files) */
-  .seg { @apply inline-flex items-center gap-1 rounded-full bg-line/40 p-1; }
+  /* segmented control */
+  .seg { @apply inline-flex items-center gap-1 rounded-full bg-white/[0.05] p-1; }
   .seg-btn { @apply inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium text-graphite transition hover:text-ink; }
-  .seg-btn-active { @apply bg-card text-ink shadow-[0_1px_2px_rgba(43,42,40,0.10)]; }
+  .seg-btn-active { @apply bg-card text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.06),_0_2px_6px_rgba(0,0,0,0.5)]; }
 
-  .nav-link { @apply inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-graphite transition hover:text-ink hover:bg-line/50; }
+  .nav-link { @apply inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-graphite transition hover:text-ink hover:bg-white/[0.06]; }
   .nav-link-active { @apply bg-ink text-paper hover:bg-ink hover:text-paper; }
 
   .mono { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-  .skeleton { @apply animate-pulse rounded-md bg-line/60; }
+  .skeleton { @apply animate-pulse rounded-md bg-white/[0.06]; }
   .hairline { @apply border-line; }
 }
 
-/* Candle flicker — the signature. Goes still when .flame--still is applied (death). */
+/* Candle flicker — the signature, now a real light source. */
 @keyframes flicker {
   0%, 100% { transform: scale(1) rotate(-1deg); opacity: .95; }
   50% { transform: scale(1.06) rotate(1.5deg); opacity: 1; }
 }
-.flame { transform-origin: bottom center; animation: flicker 2.4s ease-in-out infinite; transition: opacity .9s ease, transform .9s ease; }
-.flame--still { animation: none; opacity: .4; transform: scale(0.96); }
+.flame {
+  transform-origin: bottom center;
+  animation: flicker 2.4s ease-in-out infinite;
+  transition: opacity .9s ease, transform .9s ease, filter .9s ease;
+  filter: drop-shadow(0 0 14px rgba(243, 162, 76, 0.6)) drop-shadow(0 0 30px rgba(243, 162, 76, 0.35));
+}
+.flame--still { animation: none; opacity: .45; transform: scale(0.96); filter: none; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .rise { animation: rise .4s cubic-bezier(0.22, 1, 0.36, 1) both; }
