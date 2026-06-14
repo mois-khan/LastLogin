@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip } from "lucide-react";
+import { Lock, Download, Eye, EyeOff, Copy, Check, Image as ImageIcon, Paperclip, AudioLines, KeyRound } from "lucide-react";
 import { providerIcon } from "../lib/providers.js";
 import AudioPlayer from "./ui/AudioPlayer.jsx";
 import Candle from "./ui/Candle.jsx";
 
-// One estate's grants for a verified guardian, given the weight it deserves: the messages
-// first (a letter in their own voice), then the accounts they were entrusted with (copyable,
-// secrets hidden until revealed), then files, then a quiet export.
-// Reused by /access (the universal hub) and /guardian/:userId.
-export default function GuardianGrantView({ name, messages = [], items = [], files = [] }) {
-  const hasAny = messages.length + items.length + files.length > 0;
+// One estate's grants for a verified guardian — organized into tabs (Messages / Accounts /
+// Files [/ Talk]) so it's a calm dashboard, not an endless scroll. extraTab lets the caller
+// add a section (the companion chat). Reused by /access and /guardian/:userId.
+export default function GuardianGrantView({ name, messages = [], items = [], files = [], extraTab }) {
+  const tabs = [];
+  if (messages.length) tabs.push({ key: "messages", label: "Messages", Icon: AudioLines });
+  if (items.length) tabs.push({ key: "accounts", label: "Accounts", Icon: KeyRound });
+  if (files.length) tabs.push({ key: "files", label: "Files", Icon: Paperclip });
+  if (extraTab) tabs.push({ key: extraTab.key || "talk", label: extraTab.label, Icon: extraTab.Icon });
+
+  const [tab, setTab] = useState(tabs[0]?.key);
+  const active = tabs.find((t) => t.key === tab)?.key || tabs[0]?.key;
+  const talkKey = extraTab?.key || "talk";
 
   const downloadAll = () => {
     const lines = [`LastLogin — released to ${name || "you"}`, ""];
@@ -35,7 +42,7 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
     }, 200 * (i + 1)));
   };
 
-  if (!hasAny) {
+  if (tabs.length === 0) {
     return (
       <div className="text-center py-12">
         <Candle size={64} still />
@@ -47,93 +54,100 @@ export default function GuardianGrantView({ name, messages = [], items = [], fil
   }
 
   return (
-    <div className="space-y-14">
-      {/* 1 — the messages: a letter, in their own voice */}
-      {messages.length > 0 && (
-        <section>
-          <SectionHead label="In their words" sub="Read slowly. There's no rush." />
-          <div className="space-y-4">
-            {messages.map((m, i) => (
-              <article key={m.id} className="surface p-8 rise" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
-                <p className="eyebrow mb-4">For {m.recipientName || "the family"}</p>
-                <p className="font-display text-[1.2rem] sm:text-[1.35rem] leading-[1.7] text-ink max-w-[34rem]">{m.text}</p>
-                {m.audioUrl && (
-                  <div className="mt-6">
-                    <AudioPlayer src={m.audioUrl} />
-                    <div className="mt-2.5 flex items-center justify-between">
-                      <span className="text-xs text-mist">In their own voice</span>
-                      <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 text-xs text-ember hover:underline"><Download size={12} /> Save audio</a>
-                    </div>
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 2 — the accounts entrusted to this guardian */}
-      {items.length > 0 && (
-        <section>
-          <SectionHead label="Entrusted to you" sub="Tap any value to copy it." />
-          <div className="space-y-4">
-            {items.map((it, idx) => {
-              const Icon = (it.platform && providerIcon(it.platform)) || Paperclip;
-              return (
-                <article key={idx} className="surface p-6 rise" style={{ animationDelay: `${Math.min(idx, 6) * 50}ms` }}>
-                  <div className="flex items-center gap-3.5 mb-4">
-                    <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={19} /></span>
-                    <div className="min-w-0">
-                      <p className="font-medium text-ink truncate">{it.label}</p>
-                      <p className="eyebrow mt-0.5">{it.platform || it.type}</p>
-                    </div>
-                  </div>
-                  {it.locked ? (
-                    <p className="text-xs text-mist flex items-center gap-1.5 bg-paper/70 rounded-xl px-3 py-2.5"><Lock size={13} /> Encrypted — opens when two guardians combine their keys.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {Object.entries(it.fields || {}).map(([k, v]) => <Cred key={k} field={k} value={String(v)} />)}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* 3 — files */}
-      {files.length > 0 && (
-        <section>
-          <SectionHead label="Files & media" />
-          <div className="space-y-2">
-            {files.map((f) => {
-              const Glyph = /^image\//.test(f.mimeType || "") ? ImageIcon : Paperclip;
-              return (
-                <div key={f.id} className="surface flex items-center gap-3.5 px-4 py-3 rise">
-                  <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-graphite shrink-0"><Glyph size={17} /></span>
-                  <span className="flex-1 min-w-0 text-sm text-ink truncate">{f.name}</span>
-                  <a href={f.dataUrl} download={f.name} className="btn-secondary btn-sm"><Download size={13} /> Download</a>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* 4 — a quiet way to keep a copy of it all */}
-      <div className="pt-2">
-        <button className="btn-secondary btn-sm" onClick={downloadAll}><Download size={14} /> Save a copy of everything</button>
+    <div>
+      <div className="overflow-x-auto -mx-1 px-1 mb-8">
+        <div className="seg w-max">
+          {tabs.map((t) => (
+            <button key={t.key} onClick={() => setTab(t.key)} className={`seg-btn ${active === t.key ? "seg-btn-active" : ""}`}>
+              <t.Icon size={15} /> {t.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {active === "messages" && <MessagesSection messages={messages} />}
+      {active === "accounts" && <AccountsSection items={items} />}
+      {active === "files" && <FilesSection files={files} />}
+      {extraTab && active === talkKey && extraTab.node}
+
+      {active !== talkKey && (
+        <div className="mt-8">
+          <button className="btn-secondary btn-sm" onClick={downloadAll}><Download size={14} /> Save a copy of everything</button>
+        </div>
+      )}
     </div>
   );
 }
 
-function SectionHead({ label, sub }) {
+function MessagesSection({ messages }) {
   return (
-    <div className="mb-6">
-      <h2 className="font-display text-[1.625rem] leading-[1.18] tracking-[-0.015em] text-ink">{label}</h2>
-      {sub && <p className="text-sm text-mist mt-1">{sub}</p>}
+    <>
+      <p className="text-sm text-mist mb-5">Read slowly. There's no rush.</p>
+      <div className="space-y-4">
+        {messages.map((m, i) => (
+          <article key={m.id} className="surface p-8 rise" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
+            <p className="eyebrow mb-4">For {m.recipientName || "the family"}</p>
+            <p className="font-display text-[1.2rem] sm:text-[1.35rem] leading-[1.7] text-ink max-w-[34rem]">{m.text}</p>
+            {m.audioUrl && (
+              <div className="mt-6">
+                <AudioPlayer src={m.audioUrl} />
+                <div className="mt-2.5 flex items-center justify-between">
+                  <span className="text-xs text-mist">In their own voice</span>
+                  <a href={m.audioUrl} download="message.mp3" className="inline-flex items-center gap-1.5 text-xs text-ember hover:underline"><Download size={12} /> Save audio</a>
+                </div>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function AccountsSection({ items }) {
+  return (
+    <>
+      <p className="text-sm text-mist mb-5">Tap any value to copy it.</p>
+      <div className="space-y-4">
+        {items.map((it, idx) => {
+          const Icon = (it.platform && providerIcon(it.platform)) || Paperclip;
+          return (
+            <article key={idx} className="surface p-6 rise" style={{ animationDelay: `${Math.min(idx, 6) * 50}ms` }}>
+              <div className="flex items-center gap-3.5 mb-4">
+                <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-ink shrink-0"><Icon size={19} /></span>
+                <div className="min-w-0">
+                  <p className="font-medium text-ink truncate">{it.label}</p>
+                  <p className="eyebrow mt-0.5">{it.platform || it.type}</p>
+                </div>
+              </div>
+              {it.locked ? (
+                <p className="text-xs text-mist flex items-center gap-1.5 bg-paper/70 rounded-xl px-3 py-2.5"><Lock size={13} /> Encrypted — opens when two guardians combine their keys.</p>
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(it.fields || {}).map(([k, v]) => <Cred key={k} field={k} value={String(v)} />)}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function FilesSection({ files }) {
+  return (
+    <div className="space-y-2">
+      {files.map((f) => {
+        const Glyph = /^image\//.test(f.mimeType || "") ? ImageIcon : Paperclip;
+        return (
+          <div key={f.id} className="surface flex items-center gap-3.5 px-4 py-3 rise">
+            <span className="grid place-items-center h-10 w-10 rounded-xl bg-paper border border-line/70 text-graphite shrink-0"><Glyph size={17} /></span>
+            <span className="flex-1 min-w-0 text-sm text-ink truncate">{f.name}</span>
+            <a href={f.dataUrl} download={f.name} className="btn-secondary btn-sm"><Download size={13} /> Download</a>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import axios from "axios";
+import FormData from "form-data";
 
 const BASE = "https://api.sarvam.ai";
 
@@ -23,6 +24,20 @@ export async function translate(text, targetLang = "hi-IN", sourceLang = "en-IN"
   else if (gender === "female") body.speaker_gender = "Female";
   const { data } = await axios.post(`${BASE}/translate`, body, { headers: headers() });
   return data.translated_text;
+}
+
+/** Speech-to-text via Saarika — India-first STT (handles Indian languages + code-mixing). */
+export async function stt(buffer, language = "unknown", filename = "audio.wav") {
+  const k = process.env.SARVAM_API_KEY;
+  if (!k) throw new Error("SARVAM_API_KEY missing — get it at https://dashboard.sarvam.ai");
+  const form = new FormData();
+  form.append("file", buffer, { filename, contentType: "audio/wav" });
+  form.append("model", "saarika:v2");
+  form.append("language_code", language || "unknown"); // "unknown" lets Saarika auto-detect
+  const { data } = await axios.post(`${BASE}/speech-to-text`, form, {
+    headers: { ...form.getHeaders(), "api-subscription-key": k },
+  });
+  return data.transcript || "";
 }
 
 /** Native Indian-language speech via Bulbul (returns base64 wav). Optional alternative voice. */

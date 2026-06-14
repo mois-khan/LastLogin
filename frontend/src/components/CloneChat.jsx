@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, Mic, Square, Trash2, Upload, ShieldCheck, Sparkles } from "lucide-react";
+import { Send, Loader2, Mic, Square, Trash2, Upload, ShieldCheck, Sparkles, Check } from "lucide-react";
 import AudioPlayer from "./ui/AudioPlayer.jsx";
+import { startRecording } from "../lib/audio.js";
 
 const LANGS = [
   { code: "en-IN", label: "English" },
@@ -12,13 +13,14 @@ const LANGS = [
 
 // Chat + talk with a persona. Pure UI; the parent wires the endpoints (owner preview vs
 // guardian session). sendMessage(text, language, withAudio) -> { text, audioUrl }.
-export default function CloneChat({ name = "them", sendMessage, loadHistory, clearHistory, uploadContext }) {
+// transcribe(wavBlob, language) -> string (Sarvam STT). uploadContext(file) -> { summary }.
+export default function CloneChat({ name = "them", sendMessage, loadHistory, clearHistory, uploadContext, transcribe }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [language, setLanguage] = useState("en-IN");
   const [busy, setBusy] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [ctxBusy, setCtxBusy] = useState(false);
+  const [phase, setPhase] = useState("idle"); // idle | rec | stt
+  const [ctx, setCtx] = useState(null); // { busy, done, summary, error }
   const scrollRef = useRef(null);
   const recRef = useRef(null);
   const fileRef = useRef(null);
@@ -40,23 +42,26 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
     } finally { setBusy(false); }
   };
 
-  // Talk: in-browser speech recognition -> send with audio reply. Falls back to "send typed with voice".
-  const talk = () => {
-    const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Rec) { send(undefined, true); return; }
-    if (listening) { recRef.current?.stop(); return; }
-    const rec = new Rec();
-    rec.lang = language; rec.interimResults = false; rec.maxAlternatives = 1;
-    rec.onresult = (e) => { setListening(false); send(e.results[0][0].transcript, true); };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
-    recRef.current = rec; setListening(true); rec.start();
+  // Talk: record -> Sarvam STT -> send (with a spoken reply). Click once to start, again to stop.
+  const talk = async () => {
+    if (phase === "rec") {
+      setPhase("stt");
+      try {
+        const wav = await recRef.current.stop();
+        const text = transcribe ? await transcribe(wav, language) : "";
+        if (text && text.trim()) await send(text, true);
+      } catch { /* ignore */ } finally { setPhase("idle"); recRef.current = null; }
+      return;
+    }
+    try { recRef.current = await startRecording(); setPhase("rec"); } catch { setPhase("idle"); }
   };
 
   const onFile = async (file) => {
     if (!file || !uploadContext) return;
-    setCtxBusy(true);
-    try { await uploadContext(file); } finally { setCtxBusy(false); if (fileRef.current) fileRef.current.value = ""; }
+    setCtx({ busy: true });
+    try { const res = await uploadContext(file); setCtx({ done: true, summary: res?.summary }); }
+    catch (e) { setCtx({ error: e.response?.data?.error || "Couldn't read that chat — export it without media and try again." }); }
+    finally { if (fileRef.current) fileRef.current.value = ""; }
   };
   const reset = async () => { try { await clearHistory?.(); } catch {} setMessages([]); };
 
@@ -73,22 +78,33 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
 
       <p className="text-xs text-mist bg-paper/70 rounded-xl px-3 py-2.5 mb-4 flex items-start gap-2">
         <ShieldCheck size={14} className="text-sage-600 mt-0.5 shrink-0" />
-        A gentle AI recreation of {name}, not really them — and it will never share passwords or private details.
+        A gentle AI recreation of {name}, not really them — here only for memories and comfort. It won't share private details or take on everyday tasks.
       </p>
 
       {uploadContext && (
         <div className="mb-4">
-          <input ref={fileRef} type="file" accept=".txt" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
-          <button onClick={() => fileRef.current?.click()} disabled={ctxBusy} className="btn-secondary btn-sm">
-            {ctxBusy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Personalize with your chat
-          </button>
-          <p className="text-xs text-mist mt-1.5">Optional: export your WhatsApp chat with {name} (without media, .txt) so they sound the way they did with you. We keep only a private summary — never the chat.</p>
+          <input ref={fileRef} type="file" accept=".txt,.zip" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+          {ctx?.done ? (
+            <div className="rounded-xl bg-sage/8 border border-sage/30 px-3.5 py-3">
+              <p className="text-sm text-sage-600 font-medium flex items-center gap-1.5"><Check size={14} /> Personalized — {name} will sound more like how they were with you.</p>
+              {ctx.summary && <p className="text-xs text-graphite mt-2 leading-relaxed">{ctx.summary}</p>}
+              <button onClick={() => { setCtx(null); setTimeout(() => fileRef.current?.click(), 0); }} className="text-xs text-ember hover:underline mt-2">Replace</button>
+            </div>
+          ) : (
+            <>
+              <button onClick={() => fileRef.current?.click()} disabled={ctx?.busy} className="btn-secondary btn-sm">
+                {ctx?.busy ? <><Loader2 size={14} className="animate-spin" /> Reading your chat…</> : <><Upload size={14} /> Personalize with your chat</>}
+              </button>
+              <p className="text-xs text-mist mt-1.5">Optional: in WhatsApp open your chat with {name} → Export chat → Without media, then upload the .txt or .zip. We keep only a private summary — never the chat.</p>
+              {ctx?.error && <p className="text-xs text-ember mt-1.5">{ctx.error}</p>}
+            </>
+          )}
         </div>
       )}
 
       <div ref={scrollRef} className="space-y-3 max-h-[26rem] overflow-y-auto pr-1">
         {messages.length === 0 && !busy && (
-          <p className="text-sm text-mist text-center py-8">Say hello, ask a question, or just tell them how you're doing.</p>
+          <p className="text-sm text-mist text-center py-8">Say hello, ask about a memory, or just tell them how you're doing.</p>
         )}
         {messages.map((m, i) => (m.role === "guardian" ? (
           <div key={i} className="flex justify-end">
@@ -96,7 +112,7 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
           </div>
         ) : (
           <div key={i} className="max-w-[85%]">
-            <div className={`rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-relaxed ${m.error ? "bg-paper text-mist" : "bg-paper text-ink"}`}>{m.text}</div>
+            <div className={`rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${m.error ? "bg-paper text-mist" : "bg-paper text-ink"}`}>{m.text}</div>
             {m.audioUrl && <div className="mt-2"><AudioPlayer src={m.audioUrl} /></div>}
           </div>
         )))}
@@ -107,11 +123,11 @@ export default function CloneChat({ name = "them", sendMessage, loadHistory, cle
         <select className="field !w-auto !py-2 text-xs shrink-0" value={language} onChange={(e) => setLanguage(e.target.value)}>
           {LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
         </select>
-        <input className="field" placeholder={`Talk to ${name}…`} value={input}
+        <input className="field" placeholder={phase === "rec" ? "Listening…" : `Talk to ${name}…`} value={input}
           onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
-        <button onClick={talk} disabled={busy} title="Speak"
-          className={`grid place-items-center h-10 w-10 rounded-full shrink-0 transition ${listening ? "bg-ember text-white animate-pulse" : "btn-secondary"}`}>
-          {listening ? <Square size={15} /> : <Mic size={16} />}
+        <button onClick={talk} disabled={busy || phase === "stt"} title="Speak"
+          className={`grid place-items-center h-10 w-10 rounded-full shrink-0 transition ${phase === "rec" ? "bg-ember text-white animate-pulse" : "btn-secondary"}`}>
+          {phase === "stt" ? <Loader2 size={15} className="animate-spin" /> : phase === "rec" ? <Square size={15} /> : <Mic size={16} />}
         </button>
         <button onClick={() => send()} disabled={busy || !input.trim()} className="btn-primary shrink-0 !px-3" aria-label="Send"><Send size={16} /></button>
       </div>
