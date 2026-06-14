@@ -4,7 +4,7 @@ import {
   Trash2, Send, Ban, Upload, Paperclip, Image as ImageIcon, Loader2,
 } from "lucide-react";
 import { api } from "../../lib/api.js";
-import { PROVIDERS, providerIcon } from "../../lib/providers.js";
+import { PROVIDERS, providerIcon, providerColor } from "../../lib/providers.js";
 
 // Custom asset categories + their fields. Online "account" items now flow through the
 // provider picker (PROVIDERS) which auto-fills the login URL + platform; these remain
@@ -139,7 +139,7 @@ export default function Vault() {
               return (
                 <button key={p.key} onClick={() => pickProvider(p)} title={p.label}
                   className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 transition ${on ? "border-ember bg-ember/10 text-ink" : "border-line text-mist hover:border-mist/50"}`}>
-                  <Icon size={18} /><span className="text-[10px] leading-tight text-center truncate w-full">{p.label}</span>
+                  <Icon size={18} style={{ color: p.color }} /><span className="text-[10px] leading-tight text-center truncate w-full">{p.label}</span>
                 </button>
               );
             })}
@@ -204,7 +204,7 @@ export default function Vault() {
                 return (
                   <div key={i.id} className="card card-hover">
                     <div className="flex items-center gap-3">
-                      <span className={`grid place-items-center h-9 w-9 rounded-xl shrink-0 ${del ? "bg-mist/10 text-mist" : "bg-sage/12 text-sage-600"}`}><Icon size={17} /></span>
+                      <span className={`grid place-items-center h-9 w-9 rounded-xl shrink-0 bg-cloud border border-line ${del ? "text-mist" : "text-ink"}`}><Icon size={17} style={{ color: del ? undefined : (i.platform && providerColor(i.platform)) }} /></span>
                       <span className="flex-1 min-w-0">
                         <span className="block font-medium truncate">{i.label}</span>
                         <span className="block text-xs text-mist">{i.platform || i.type}</span>

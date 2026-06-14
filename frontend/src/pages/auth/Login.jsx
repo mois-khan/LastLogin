@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { ShieldCheck, Users, AudioLines, ArrowRight } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Candle from "../../components/ui/Candle.jsx";
+import ThemeToggle from "../../components/ui/ThemeToggle.jsx";
 
 const TRUST = [
   { Icon: ShieldCheck, text: "Encrypted, and released only after a death is verified." },
@@ -34,7 +35,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="min-h-screen grid lg:grid-cols-2 relative">
+      <div className="absolute top-5 right-5 z-10"><ThemeToggle /></div>
       {/* Hero — the thesis */}
       <div className="relative flex flex-col justify-center px-8 sm:px-14 py-16 border-b lg:border-b-0 lg:border-r border-line">
         <div className="max-w-md rise">

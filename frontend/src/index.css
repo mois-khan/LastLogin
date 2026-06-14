@@ -2,22 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+/* ── Theme tokens. Light is the default; `.dark` on <html> flips everything. ── */
+:root {
+  color-scheme: light;
+  --paper: 255 255 255;
+  --cloud: 245 245 247;
+  --card: 255 255 255;
+  --ink: 29 29 31;
+  --graphite: 81 81 84;
+  --mist: 134 134 139;
+  --line: 224 224 228;
+  --ember: 194 106 44;
+  --ember-600: 168 90 36;
+  --sage: 70 120 90;
+  --sage-600: 56 100 74;
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.03), 0 12px 28px -14px rgba(0,0,0,0.10);
+  --shadow-lift: 0 2px 8px rgba(0,0,0,0.05), 0 30px 60px -28px rgba(0,0,0,0.16);
+  --shadow-glow: 0 6px 22px -6px rgba(194,106,44,0.40);
+  --bg: radial-gradient(1200px 660px at 50% -16%, rgba(194,106,44,0.05), transparent 60%), #FFFFFF;
+  --candle-fill: #EFEBE4;
+  --candle-stroke: #D2CDC3;
+  --flame-glow: drop-shadow(0 0 6px rgba(194,106,44,0.30));
+}
+html.dark {
+  color-scheme: dark;
+  --paper: 10 10 14;
+  --cloud: 16 16 22;
+  --card: 22 22 31;
+  --ink: 244 244 247;
+  --graphite: 180 180 192;
+  --mist: 124 124 136;
+  --line: 39 39 48;
+  --ember: 243 162 76;
+  --ember-600: 233 140 52;
+  --sage: 95 211 163;
+  --sage-600: 70 190 140;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,0.05), 0 24px 50px -34px rgba(0,0,0,0.85);
+  --shadow-lift: inset 0 1px 0 rgba(255,255,255,0.07), 0 40px 74px -38px rgba(0,0,0,0.95);
+  --shadow-glow: 0 0 30px -4px rgba(243,162,76,0.5);
+  --bg: radial-gradient(1200px 660px at 50% -16%, rgba(243,162,76,0.08), transparent 60%), #0A0A0E;
+  --candle-fill: #FBF7F0;
+  --candle-stroke: #2A2A33;
+  --flame-glow: drop-shadow(0 0 14px rgba(243,162,76,0.6)) drop-shadow(0 0 30px rgba(243,162,76,0.35));
+}
 
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  /* near-black with a single warm glow at the top — the candle's light bleeding into the page */
-  background: radial-gradient(1200px 660px at 50% -16%, rgba(243, 162, 76, 0.08), transparent 60%), #0A0A0E;
+  background: var(--bg);
   background-attachment: fixed;
-  color: #F4F4F7;
+  color: rgb(var(--ink));
   font-family: "Inter", system-ui, sans-serif;
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; color: #F4F4F7; }
-::selection { background: rgba(243, 162, 76, 0.28); color: #fff; }
+h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; color: rgb(var(--ink)); }
+::selection { background: rgb(var(--ember) / 0.26); }
 
 @layer base {
   h1 { @apply text-title md:text-hero; }
@@ -28,17 +69,14 @@ h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; colo
 }
 
 @layer components {
-  /* Elevated card — a lighter surface, a hairline, a top highlight + soft drop reads as glass on dark. */
   .card { @apply bg-card border border-line rounded-[1.25rem] p-6 shadow-card; }
-  .card-hover { @apply transition duration-300 ease-out hover:-translate-y-0.5 hover:border-white/10 hover:shadow-lift; }
-  /* Borderless-feel surface for reverent content (messages, granted items) — floats above the page. */
-  .surface { @apply bg-card border border-white/[0.06] rounded-[1.25rem] shadow-lift; }
+  .card-hover { @apply transition duration-300 ease-out hover:-translate-y-0.5 hover:shadow-lift; }
+  .surface { @apply bg-card border border-line rounded-[1.25rem] shadow-lift; }
 
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium tracking-tight transition duration-200 focus-visible:shadow-focus disabled:opacity-40 disabled:cursor-not-allowed; }
-  /* dark, confident label on a glowing amber fill */
   .btn-primary { @apply btn bg-ember text-paper font-semibold shadow-glow hover:bg-ember-600 active:translate-y-px; }
-  .btn-secondary { @apply btn border border-line bg-card text-ink hover:bg-white/[0.04] hover:border-white/15 active:translate-y-px; }
-  .btn-ghost { @apply btn text-graphite hover:text-ink hover:bg-white/[0.05]; }
+  .btn-secondary { @apply btn border border-line bg-card text-ink hover:bg-cloud hover:border-mist/40 active:translate-y-px; }
+  .btn-ghost { @apply btn text-graphite hover:text-ink hover:bg-line/60; }
   .btn-sm { @apply px-3.5 py-1.5 text-[13px]; }
   .btn-ember { @apply btn-primary; }
 
@@ -49,30 +87,25 @@ h1, h2, h3, h4 { font-family: "Fraunces", Georgia, serif; font-weight: 500; colo
   .pill { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium; }
   .chip { @apply inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition cursor-pointer select-none; }
 
-  /* segmented control */
-  .seg { @apply inline-flex items-center gap-1 rounded-full bg-white/[0.05] p-1; }
+  .seg { @apply inline-flex items-center gap-1 rounded-full bg-cloud p-1; }
   .seg-btn { @apply inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium text-graphite transition hover:text-ink; }
-  .seg-btn-active { @apply bg-card text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.06),_0_2px_6px_rgba(0,0,0,0.5)]; }
+  .seg-btn-active { @apply bg-card text-ink shadow-[0_1px_3px_rgba(0,0,0,0.14)]; }
 
-  .nav-link { @apply inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-graphite transition hover:text-ink hover:bg-white/[0.06]; }
+  .nav-link { @apply inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-graphite transition hover:text-ink hover:bg-line/60; }
   .nav-link-active { @apply bg-ink text-paper hover:bg-ink hover:text-paper; }
 
   .mono { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-  .skeleton { @apply animate-pulse rounded-md bg-white/[0.06]; }
+  .skeleton { @apply animate-pulse rounded-md bg-line; }
   .hairline { @apply border-line; }
 }
 
-/* Candle flicker — the signature, now a real light source. */
+/* Candle — visible on white, a glowing light source on dark. */
+.candle-body { fill: var(--candle-fill); stroke: var(--candle-stroke); }
 @keyframes flicker {
   0%, 100% { transform: scale(1) rotate(-1deg); opacity: .95; }
   50% { transform: scale(1.06) rotate(1.5deg); opacity: 1; }
 }
-.flame {
-  transform-origin: bottom center;
-  animation: flicker 2.4s ease-in-out infinite;
-  transition: opacity .9s ease, transform .9s ease, filter .9s ease;
-  filter: drop-shadow(0 0 14px rgba(243, 162, 76, 0.6)) drop-shadow(0 0 30px rgba(243, 162, 76, 0.35));
-}
+.flame { transform-origin: bottom center; animation: flicker 2.4s ease-in-out infinite; transition: opacity .9s ease, transform .9s ease, filter .9s ease; filter: var(--flame-glow); }
 .flame--still { animation: none; opacity: .45; transform: scale(0.96); filter: none; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
