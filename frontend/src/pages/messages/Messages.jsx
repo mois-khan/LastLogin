@@ -101,15 +101,15 @@ export default function Messages() {
           </div>
           {cloning ? (
             <span className="flex items-center gap-2 text-sm text-graphite shrink-0"><Loader2 size={16} className="animate-spin text-ember" /> Cloning…</span>
+          ) : recording ? (
+            <button className="btn-secondary shrink-0 animate-pulse" onClick={stopRec}><Square size={15} /> Stop recording</button>
           ) : voiceId ? (
             <div className="flex items-center gap-2 shrink-0">
               <span className="pill bg-sage/15 text-sage-600"><Check size={13} /> Cloned</span>
-              <button className="btn-ghost btn-sm" onClick={startRec}><Mic size={14} /> Re-record</button>
+              <button className="btn-secondary btn-sm" onClick={startRec}><Mic size={14} /> Re-record</button>
             </div>
           ) : (
-            <button className={`shrink-0 ${recording ? "btn-secondary" : "btn-primary"}`} onClick={recording ? stopRec : startRec}>
-              {recording ? <><Square size={15} /> Stop</> : <><Mic size={15} /> Record 60s</>}
-            </button>
+            <button className="btn-primary shrink-0" onClick={startRec}><Mic size={15} /> Record 60s</button>
           )}
         </div>
 

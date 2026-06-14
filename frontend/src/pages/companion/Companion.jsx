@@ -185,7 +185,7 @@ export default function Companion() {
             sendMessage={(message, language, withAudio) => api.post("/clone/preview", { message, language, withAudio }).then((r) => r.data)}
             loadHistory={() => api.get("/clone/preview/history").then((r) => ({ messages: r.data }))}
             clearHistory={() => api.delete("/clone/preview/history")}
-            transcribe={(blob, language) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); fd.append("language", language); return api.post("/clone/transcribe", fd).then((r) => r.data.text); }} />
+            transcribe={(blob) => { const fd = new FormData(); fd.append("audio", blob, "a.wav"); return api.post("/clone/transcribe", fd).then((r) => r.data); }} />
         </>
       )}
 
